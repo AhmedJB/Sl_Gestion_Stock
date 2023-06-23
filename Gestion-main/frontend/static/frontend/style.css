@@ -964,3 +964,31 @@ and (orientation : portrait) {
     }
   }
   
+
+/* pagination style */
+
+.pagination-container {
+    width:100%;
+    padding:10px;
+    display:flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.pagination-subcontainer{
+    display:flex;
+    align-items: center;
+}
+
+.pagination-action{
+ 
+}
+
+.pagination-page{
+    color:var(--purple);
+    margin-bottom: 0px;
+}
+
+.disabled-btn {
+    cursor: not-allowed;
+}

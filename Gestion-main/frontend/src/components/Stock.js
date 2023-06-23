@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, Fragment } from "react";
+import React, { useState, useEffect, useContext, Fragment,useRef } from "react";
 import { UserContext } from "../contexts/UserContext";
 import { DataContext } from "../contexts/DataContext";
 import { Redirect } from "react-router-dom";
@@ -58,6 +58,8 @@ function Stock(props) {
     termonstat :"Termonstat"
   };
   const [Products, setProduct] = useState([]);
+  const [SeperatedProducts,setSeperatedProducts] = useState([]);
+  const [active,setActive] = useState(0); 
 
   const [Metal, setMetal] = useState([
     {
@@ -177,10 +179,67 @@ function Stock(props) {
     });
   }, []);
 
+  const seperateProducts = () => {
+    const limit = 20;
+    let seperated = [];
+    let temp = [];
+    for (let i = 1; i <= Products.length ; i++) {
+      if (i % limit ===  0){
+        temp.push(Products[i-1]);
+        seperated.push(temp);
+        temp = [];
+      }else{
+        temp.push(Products[i-1]);
+      }
+    }
+    if (temp.length > 0) {
+      seperated.push(temp);    
+    }
+    setSeperatedProducts(seperated);
+  }
+
+  const handleDirection = (step) => {
+    let act;
+    if (step > 0) {
+      act = (active + step) >= SeperatedProducts.length ? 0 : active + step;
+    }else {
+      act = (active + step) >= 0 ? active+step : SeperatedProducts.length - 1;
+    }
+    console.log("steps");
+    console.log(SeperatedProducts.length);
+    console.log(act);
+    setActive(act);
+  }  
+
+  const initiated = useRef(false);
+
+  const [fetchLoading,setFetchLoading] = useState(true);
+  const [selecSupplier,setSelecSupplier] = useState(null);
+
+
+  useEffect(() => {
+    seperateProducts();
+    setActive(0);
+  },[Products])
+
+  useEffect(() => {
+    if (initiated.current) {
+      console.log("this is a callback");
+      console.log(!fetchLoading)
+      setFetchLoading(false);
+
+    }else{
+      initiated.current = true;
+    }
+  },[Products])
+
+
+
   async function updateProducts() {
     let pResp = await req("product");
     let obj = { ...Data };
     obj.Products = pResp;
+    console.log("updating products")
     setProduct(pResp);
     setData(obj);
     return true;
@@ -442,17 +501,21 @@ function Stock(props) {
     }
   }
 
-  function filterFournisseur(fs) {
+  async function filterFournisseur(fs) {
+    setFetchLoading(true);
     if (fs == "") {
-      updateProducts();
+      setSelecSupplier(null);
+      await updateProducts();
     } else {
       let arr = [];
       let f = fs[0];
-      for (let i = 0; i < Products.length; i++) {
-        if (Products[i].fournisseur.id == f.id) {
-          arr.push(Products[i]);
+      let produits = Data.Products;
+      for (let i = 0; i < produits.length; i++) {
+        if (produits[i].fournisseur.id == f.id) {
+          arr.push(produits[i]);
         }
       }
+      setSelecSupplier(fs);
       setProduct(arr);
     }
   }
@@ -632,7 +695,7 @@ function Stock(props) {
             </th>
           </tr>
 
-          {Products.map((e) => {
+          {SeperatedProducts[active] && SeperatedProducts[active].map((e) => {
             //console.log(e);
             return (
               <tr>
@@ -910,6 +973,7 @@ function Stock(props) {
               fvalue="id"
               searchBy="name"
               placeholder="Choisir un Fournisseur"
+              values={selecSupplier}
             />
             <CustomSelect
               options={Options}
@@ -947,7 +1011,25 @@ function Stock(props) {
         </div>
 
         {Products.length == 0 ? NotFound : DataTable}
+
+        <div className="pagination-container">
+          <div className="pagination-subcontainer">
+            <button className="pagination-action btn-main" 
+              onClick={() => handleDirection(-1)}
+            >Precedent</button>
+            <p className="pagination-page">
+              {active + 1}/{SeperatedProducts[active] ? SeperatedProducts.length : "0"}
+              </p>
+            <button className="pagination-action btn-main"
+              onClick={() => handleDirection(1)}
+            >Suivant</button>
+            
+          </div>
+
+        </div>
+        
       </section>
+      
     </Fragment>
   );
 
@@ -964,7 +1046,9 @@ function Stock(props) {
   return loading ? (
     loader
   ) : User.logged ? (
-    html
+    fetchLoading  ? (
+      <h1>Loading...</h1>
+    )  : html
   ) : (
     <Redirect
       to={{
