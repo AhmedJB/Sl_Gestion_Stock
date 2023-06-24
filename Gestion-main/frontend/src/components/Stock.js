@@ -17,6 +17,8 @@ import {
 import CustomSelect from "./CustomSelect";
 import Checkbox from "@mui/material/Checkbox";
 import Modal from "./Modal";
+import usePagination from "./hooks/usePagination";
+import Pagination from "./Utils/Pagination";
 
 function Stock(props) {
   const { addToast } = useToasts();
@@ -58,8 +60,8 @@ function Stock(props) {
     termonstat :"Termonstat"
   };
   const [Products, setProduct] = useState([]);
-  const [SeperatedProducts,setSeperatedProducts] = useState([]);
-  const [active,setActive] = useState(0); 
+  //const [SeperatedProducts,setSeperatedProducts] = useState([]);
+  //const [active,setActive] = useState(0); 
 
   const [Metal, setMetal] = useState([
     {
@@ -179,7 +181,7 @@ function Stock(props) {
     });
   }, []);
 
-  const seperateProducts = () => {
+  /*const seperateProducts = () => {
     const limit = 20;
     let seperated = [];
     let temp = [];
@@ -196,9 +198,9 @@ function Stock(props) {
       seperated.push(temp);    
     }
     setSeperatedProducts(seperated);
-  }
+  }*/
 
-  const handleDirection = (step) => {
+  /*const handleDirection = (step) => {
     let act;
     if (step > 0) {
       act = (active + step) >= SeperatedProducts.length ? 0 : active + step;
@@ -209,19 +211,25 @@ function Stock(props) {
     console.log(SeperatedProducts.length);
     console.log(act);
     setActive(act);
-  }  
+  } */ 
 
-  const initiated = useRef(false);
+
 
   const [fetchLoading,setFetchLoading] = useState(true);
   const [selecSupplier,setSelecSupplier] = useState(null);
+  const [selectCat,setSelectCat] = useState(null);
+  const [selectID,setSelectID] = useState(null);
+  const [selectName,setSelectName] = useState(null);
 
 
-  useEffect(() => {
+ /* useEffect(() => {
     seperateProducts();
     setActive(0);
-  },[Products])
+  },[Products])*/
 
+  const [SeperatedProducts,active,handleDirection] = usePagination(Products);
+
+  const initiated = useRef(false);
   useEffect(() => {
     if (initiated.current) {
       console.log("this is a callback");
@@ -456,52 +464,64 @@ function Stock(props) {
   }
 
   function filterCat(cs) {
+    setFetchLoading(true);
+
     if (cs == "") {
+      setSelectCat(null);
       updateProducts();
     } else {
       let arr = [];
       let v = cs[0];
-
-      for (let i = 0; i < Products.length; i++) {
-        if (Products[i].product.ptype == v.value) {
-          arr.push(Products[i]);
+      let produits = Data.Products;
+      for (let i = 0; i < produits.length; i++) {
+        if (produits[i].product.ptype == v.value) {
+          arr.push(produits[i]);
         }
       }
+      setSelectCat(cs);
       setProduct(arr);
     }
   }
 
-  function filterProduct(vs) {
+function filterProduct(vs) {
+    setFetchLoading(true);
     if (vs == "") {
+      setSelectID(null);
       updateProducts();
     } else {
       let arr = [];
       let v = vs[0];
-      for (let i = 0; i < Products.length; i++) {
-        if (Products[i].product.p_id == v.p_id) {
-          arr.push(Products[i]);
+      let produits = Data.Products;
+      for (let i = 0; i < produits.length; i++) {
+        if (produits[i].product.p_id == v.p_id) {
+          arr.push(produits[i]);
         }
       }
+      setSelectID(vs)
       setProduct(arr);
     }
   }
 
-  function filterProductName(vs) {
+function filterProductName(vs) {
+  setFetchLoading(true);
     if (vs == "") {
+      setSelectName(null);
       updateProducts();
     } else {
       let arr = [];
       let v = vs[0];
-      for (let i = 0; i < Products.length; i++) {
-        if (Products[i].product.name == v.name) {
-          arr.push(Products[i]);
+      let produits = Data.Products;
+      for (let i = 0; i < produits.length; i++) {
+        if (produits[i].product.name == v.name) {
+          arr.push(produits[i]);
         }
       }
+      setSelectName(vs);
       setProduct(arr);
     }
   }
 
-  async function filterFournisseur(fs) {
+async function filterFournisseur(fs) {
     setFetchLoading(true);
     if (fs == "") {
       setSelecSupplier(null);
@@ -520,7 +540,7 @@ function Stock(props) {
     }
   }
 
-  function filterPlace(ps) {
+function filterPlace(ps) {
     if (ps == "") {
       updateProducts();
     } else {
@@ -746,6 +766,16 @@ function Stock(props) {
     </Fragment>
   );
 
+  const loader = (
+    <div className="animation-container">
+      <div className="lds-facebook">
+        <div />
+        <div />
+        <div />
+      </div>
+    </div>
+  );
+
   const html = (
     <Fragment>
       <Modal open={ConfirmOpen} closeFunction={setConfirm}>
@@ -964,91 +994,84 @@ function Stock(props) {
       <AnimateNav />
       <section className="card Supplier">
         <h1 className="card-title text-center">Stock</h1>
-        <div className="filtre-row">
-          <div className="filtre-group">
-            <CustomSelect
-              options={Data.Suppliers}
-              changeFunc={filterFournisseur}
-              label="name"
-              fvalue="id"
-              searchBy="name"
-              placeholder="Choisir un Fournisseur"
-              values={selecSupplier}
-            />
-            <CustomSelect
-              options={Options}
-              changeFunc={filterCat}
-              label="name"
-              fvalue="name"
-              placeholder="Choisir une Categorie"
-            />
-            {/* <CustomSelect options={Place} changeFunc={filterPlace}
-  label="name" fvalue="value" placeholder="Choisir une Place" /> */}
-            <CustomSelect
-              options={getarray("product")}
-              changeFunc={filterProduct}
-              label="p_id"
-              fvalue="p_id"
-              placeholder="Choisir un ID"
-            />
-            <CustomSelect
-              options={getarray("product")}
-              changeFunc={filterProductName}
-              label="total_name"
-              fvalue="p_id"
-              placeholder="Choisir un produit"
-            />
-          </div>
+            {
+              fetchLoading ? 
+              <div className="section-loader-container">
+                {loader}
+              </div>
+               : <>
 
-          <button
-            class="btn-main"
-            onClick={() => {
-              handleOpen();
-            }}
-          >
-            Ajouter un Produit
-          </button>
-        </div>
-
-        {Products.length == 0 ? NotFound : DataTable}
-
-        <div className="pagination-container">
-          <div className="pagination-subcontainer">
-            <button className="pagination-action btn-main" 
-              onClick={() => handleDirection(-1)}
-            >Precedent</button>
-            <p className="pagination-page">
-              {active + 1}/{SeperatedProducts[active] ? SeperatedProducts.length : "0"}
-              </p>
-            <button className="pagination-action btn-main"
-              onClick={() => handleDirection(1)}
-            >Suivant</button>
-            
-          </div>
-
-        </div>
+              <div className="filtre-row">
+                <div className="filtre-group">
+                  <CustomSelect
+                    options={Data.Suppliers}
+                    changeFunc={filterFournisseur}
+                    label="name"
+                    fvalue="id"
+                    searchBy="name"
+                    placeholder="Choisir un Fournisseur"
+                    values={selecSupplier}
+                  />
+                  <CustomSelect
+                    options={Options}
+                    changeFunc={filterCat}
+                    label="name"
+                    fvalue="name"
+                    placeholder="Choisir une Categorie"
+                    values={selectCat}
+                  />
+                  {/* <CustomSelect options={Place} changeFunc={filterPlace}
+        label="name" fvalue="value" placeholder="Choisir une Place" /> */}
+                  <CustomSelect
+                    options={getarray("product")}
+                    changeFunc={filterProduct}
+                    label="p_id"
+                    fvalue="p_id"
+                    placeholder="Choisir un ID"
+                    values={selectID}
+                  />
+                  <CustomSelect
+                    options={getarray("product")}
+                    changeFunc={filterProductName}
+                    label="total_name"
+                    fvalue="p_id"
+                    placeholder="Choisir un produit"
+                    values={selectName}
+                  />
+                </div>
+      
+                <button
+                  class="btn-main"
+                  onClick={() => {
+                    handleOpen();
+                  }}
+                >
+                  Ajouter un Produit
+                </button>
+              </div>
+      
+              {Products.length == 0 ? NotFound : DataTable}
+              <Pagination data={Products} seperated={SeperatedProducts} handleDirection={handleDirection} active={active}  />
+              
+      
+              
+              
+            </>
+            }
+        
+        
         
       </section>
       
     </Fragment>
   );
 
-  const loader = (
-    <div className="animation-container">
-      <div className="lds-facebook">
-        <div />
-        <div />
-        <div />
-      </div>
-    </div>
-  );
+  
 
   return loading ? (
     loader
   ) : User.logged ? (
-    fetchLoading  ? (
-      <h1>Loading...</h1>
-    )  : html
+    html
   ) : (
     <Redirect
       to={{

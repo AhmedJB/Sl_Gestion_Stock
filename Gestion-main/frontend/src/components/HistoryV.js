@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, Fragment } from "react";
+import React, { useState, useEffect, useContext, Fragment, useRef } from "react";
 import { UserContext } from "../contexts/UserContext";
 import { DataContext } from "../contexts/DataContext";
 import { isLogged, req,req_body, download_file, logout,postReq } from "../helper";
@@ -7,7 +7,7 @@ import AnimateNav from "./AnimateNav";
 import { useToasts } from "react-toast-notifications";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome'
 import { faEdit, faExclamationCircle, faMicrophoneAltSlash, faTrashAlt } from "@fortawesome/free-solid-svg-icons";
-import { DatePicker, KeyboardDatePicker } from "@material-ui/pickers";
+import { DatePicker, DateTimePicker, KeyboardDatePicker } from "@material-ui/pickers";
 import { createTheme } from "@material-ui/core";
 import { ThemeProvider } from "@material-ui/styles";
 import { Preview, print } from 'react-html2pdf';
@@ -15,6 +15,8 @@ import Modal from "./Modal";
 import "../../static/frontend/invoice.css"
 import CustomSelect from "./CustomSelect";
 import { makePDF } from 'multi-page-html2pdf';
+import usePagination from "./hooks/usePagination";
+import Pagination from "./Utils/Pagination";
 
 
 
@@ -35,6 +37,7 @@ function HistoryV(props){
   );
   const [Open,setOpen] = useState(false);
   const [Orders, setOrders] = useState([]);
+  const [BackUpOrders,setBackUpOrders] =  useState([]);
   const [SelectedOrder,setSelectedOrder] = useState({
     order: {},
     details : [{
@@ -66,6 +69,40 @@ function HistoryV(props){
       id: 3
     }
   ])
+
+  const [filteredClient,setFilteredClient] = useState(null);
+  const [filteredID,setFilteredID] = useState(null);
+
+// my new states
+
+const [Seperated,active,handleDirection] = usePagination(Orders);
+const [fetchLoading,setFetchLoading] = useState(true);
+
+// effect for  the callback loader
+const initiated = useRef(false);
+useEffect(() => {
+    if (initiated.current) {
+      /*console.log("############### Fitered states #################")
+      console.log(filteredClient)
+      console.log(filteredID)
+      console.log("#####################################")
+      if (filteredClient && filteredClient !=  '' && false){
+        filter(filteredClient)
+      }
+      if (filteredID && filteredID != '' && false) {
+        filterID(filteredID);
+      }*/
+      setFetchLoading(false);
+
+    }else{
+      initiated.current = true;
+    }
+  },[Orders])
+
+
+
+// from here functions
+
 
   function getOption(id){
     for (let i =0; i < PaymentOptions.length ; i++){
@@ -169,6 +206,9 @@ const materialTheme = createTheme({
     year: "numeric",
     month: "long",
     day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+    second: "numeric"
   };
 
 
@@ -191,7 +231,10 @@ const materialTheme = createTheme({
     updateOrders(null,date);
   }
 
-  async function updateOrders(startdate=null , enddate = null){
+async function updateOrders(startdate=null , enddate = null,newc=null,newid=null){
+    let clientFilt = newc === '' ? newc : filteredClient;
+    let idFilt =  newid === '' ? newid : filteredID;
+    setFetchLoading(true);
     if (!startdate){
       startdate = startDate
     }
@@ -207,25 +250,47 @@ const materialTheme = createTheme({
     }
     let resp = await postReq('filterorder',body);
     if (resp){
-      setOrders(resp);
+      console.log("############### Fitered states #################")
+      console.log(newc)
+      console.log(newid)
+      console.log("#####################################")
+      let temp = resp;
+      if (clientFilt && clientFilt != ''){
+        temp = await filter(clientFilt,true)
+      }
+      if (idFilt && idFilt != '') {
+        temp = await filterID(idFilt,true)
+      }
+      console.log(resp)
+      console.log(temp);
+      setOrders(temp);
+      setBackUpOrders(resp);
     }
   }
 
-  async function  filter(v){
+  async function  filter(v,fromUpdate=false){
     var d = [];
-    if (v != ''){
+    if (v && v != ''){
       let temp;
       for (let i=0 ; i<  v.length ; i++){
-          temp = Orders.filter(e => e.client.id == v[i].id);
+          temp = BackUpOrders.filter(e => e.client.id == v[i].id);
           for (let i=0 ; i<  temp.length ; i++){
             //console.log(temp);
             d.push(temp[i]);
             }
       }
       console.log(d);
-      setOrders(d);
+      if (fromUpdate){
+        return d;
+      }
+      if (v != filteredClient){
+        setFilteredClient(v);
+        setOrders(d);
+      }
+      
     }else{
-     await updateOrders();
+      setFilteredClient(null);
+     await updateOrders(null,null,'',null);
     }
     
 
@@ -438,7 +503,8 @@ async function updateOrder(){
   resp = {
     details  : Details,
     deleted : DeletedOrder.details,
-    ret :  DeletedOrder.order.ret
+    ret :  DeletedOrder.order.ret,
+    date : DeletedOrder.order.date
   }
   
   let resp = await postReq('modorder',resp);
@@ -462,7 +528,13 @@ async function updateOrder(){
         autoDismiss: true,
       });
     }
+    setDeleted({
+      client:{},
+      order: {},
+      details : []
+    });
     updateOrders();
+    setOpen(false);
   }else{
     addToast("Erreur", {
       appearance: "error",
@@ -477,7 +549,7 @@ async function handleClose(arg){
     order: {},
     details : []
   });
-  await updateOrders();
+  //await updateOrders();
   setOpen(arg);
 
 };
@@ -492,21 +564,29 @@ function getSubOrder(l){
   return res;
 }
 
-async function filterID(v){
+async function filterID(v,fromUpdate=false){
   var d = [];
-  if (v != ''){
+  if (v && v != ''){
     let temp;
     for (let i=0 ; i<  v.length ; i++){
-        temp = Orders.filter(e => e.order.id == v[i].id);
+        temp = BackUpOrders.filter(e => e.order.id == v[i].id);
         for (let i=0 ; i<  temp.length ; i++){
           //console.log(temp);
           d.push(temp[i]);
           }
     }
     console.log(d);
-    setOrders(d);
+    if (fromUpdate){
+      return d;
+    }
+    if (v != filterID){
+      setFilteredID(v);
+      setOrders(d);  
+    }
+    
   }else{
-   await updateOrders();
+   setFilteredID(null);
+   await updateOrders(null,null,null,'');
   }
 }
 
@@ -969,7 +1049,7 @@ const template = SelectedOrder.details.map((order,i) => {
     <th></th>
 	</tr>
 
-	{Orders.map(e => {
+	{Seperated[active] && Seperated[active].map(e => {
 	  return (
 		<tr>
 	  <td className="date">{e.order.o_id}</td>
@@ -990,136 +1070,192 @@ const template = SelectedOrder.details.map((order,i) => {
 </div>
 	</Fragment>);
 
-const html = (
-    <Fragment>
+const loader = (
+  <div className="animation-container">
+    <div className="lds-facebook">
+      <div />
+      <div />
+      <div />
+    </div>
+  </div>
+);
 
-      <Modal open={Open} closeFunction = {handleClose}>
-            <h1 className='title-modal m20'>Detail de Commande</h1>
-            <div className="modal-input-row">
+const html = (
+  <Fragment>
+    <Modal open={Open} closeFunction={handleClose}>
+      <h1 className="title-modal m20">Detail de Commande</h1>
+      <div className="modal-input-row">
+        <CustomSelect
+          options={PaymentOptions}
+          changeFunc={handlePaiement}
+          label="name"
+          multi={false}
+          values={PaymentOptions.filter((e) => e.id == Details.mode)}
+          fvalue="id"
+          placeholder="Mode de paiement"
+        />
+      </div>
+      <div className="modal-input">
+        <label for="add">Montant Paye</label>
+        <input
+          type="text"
+          defaultValue={Details.paid + " DH"}
+          onChange={handlePaid}
+          onFocus={clearField}
+          onBlur={formatPrice}
+          datavalue={Details.paid}
+          id="add_m"
+        ></input>
+      </div>
+      <div className="modal-input">
+        <label for="add">Remboursement</label>
+        <input
+          key={DeletedOrder.order.ret}
+          type="text"
+          defaultValue={DeletedOrder.order.ret + " DH"}
+          onChange={handleret}
+          onFocus={clearField}
+          onBlur={formatPrice}
+          datavalue={DeletedOrder.order.ret}
+          id="add_m"
+        ></input>
+      </div>
+      <div className="modal-input">
+        <label>Date</label>
+        <ThemeProvider theme={materialTheme}>
+          <DateTimePicker
+            variant="inline"
+            label="Date Commande"
+            value={DeletedOrder.order.date}
+            onChange={(val) => {
+              let temp = {
+                ...DeletedOrder
+              }
+              temp.order.date = val;
+              setDeleted(temp);
+            }}
+          />
+        </ThemeProvider>
+      </div>
+      <table id="status-table">
+        <tbody>
+          <tr>
+            <th className="date">Nom du Produit</th>
+            <th classname="task-title">Quantite</th>
+            <th classname="tel">Prix</th>
+          </tr>
+
+          {Details.details.map((e) => {
+            return (
+              <tr>
+                <td className="date">{e.product_name}</td>
+                <td className="task-title">
+                  <input
+                    key={e.id}
+                    className="editable-field"
+                    name="quantity"
+                    id={e.id}
+                    onChange={(r) => modifyDetails(r, e.id)}
+                    onFocus={clearField}
+                    onBlur={formatField}
+                    datavalue={e.quantity}
+                    defaultValue={e.quantity}
+                  ></input>
+                </td>
+                <td className="status">
+                  <input
+                    className="editable-field"
+                    name="prix"
+                    dataid={e.id}
+                    onChange={(r) => modifyDetails(r, e.id)}
+                    onFocus={clearField}
+                    onBlur={formatPrice}
+                    datavalue={e.prix}
+                    defaultValue={e.prix + " DH"}
+                  ></input>
+                </td>
+                <td
+                  onClick={() => {
+                    delOrderProduct(e.id);
+                  }}
+                  className="delete"
+                >
+                  <FontAwesomeIcon icon={faTrashAlt} className="trash" />
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      <button id="submit" onClick={() => updateOrder()}>
+        Modifier
+      </button>
+    </Modal>
+
+    <AnimateNav />
+    <section className="card Supplier">
+      <h1 className="card-title text-center">Historique</h1>
+
+      {fetchLoading ? (
+        <div className="section-loader-container">{loader}</div>
+      ) : (
+        <>
+          <div className="filtre-row seperate">
+            <ThemeProvider theme={materialTheme}>
+              <DatePicker
+                variant="inline"
+                label="Date Debut"
+                value={startDate}
+                onChange={changeStart}
+              />
+            </ThemeProvider>
             <CustomSelect
-              options={PaymentOptions}
-              changeFunc={handlePaiement}
+              options={Data.Clients}
+              changeFunc={filter}
               label="name"
               multi={false}
-              values={PaymentOptions.filter(
-                e => e.id == Details.mode
-              )}
               fvalue="id"
-              placeholder="Mode de paiement"
+              values={filteredClient}
+              placeholder="Choisir un Client"
             />
-          </div>
-            <div className="modal-input">
-            <label for='add'>Montant Paye</label>
-            <input type="text" defaultValue={Details.paid +' DH'} onChange={handlePaid} onFocus= {clearField}
-                        onBlur ={formatPrice}
-                        datavalue={Details.paid} id="add_m"></input>
-            </div>
-            <div className="modal-input">
-            <label for='add'>Remboursement</label>
-            <input key={DeletedOrder.order.ret} type="text" defaultValue={DeletedOrder.order.ret +' DH'} onChange={handleret} onFocus= {clearField}
-                        onBlur ={formatPrice}
-                        datavalue={DeletedOrder.order.ret} id="add_m"></input>
-            </div>
-            <table id="status-table">
-            <tbody>
-              <tr>
-                <th className="date">Nom du Produit</th>
-                <th classname="task-title">Quantite</th>
-                <th classname="tel">Prix</th>
-              </tr>
+            <CustomSelect
+              options={getSubOrder(Orders)}
+              changeFunc={filterID}
+              label="o_id"
+              multi={false}
+              values={filteredID}
+              searchTerm="o_id"
+              fvalue="id"
+              
+              placeholder="Choisir l'ID"
+            />
 
-              {Details.details.map(e => {
-                return (
-                  <tr>
-                    <td className="date">{e.product_name}</td>
-                    <td className="task-title">
-                      <input
-                        key={e.id}
-                        className="editable-field"
-                        name="quantity"
-                        
-                        id={e.id}
-                        onChange = {(r) => modifyDetails(r,e.id)}
-                        onFocus= {clearField}
-                        onBlur ={formatField}
-                        datavalue={e.quantity}
-                        
-                        defaultValue={e.quantity}
-                      ></input>
-                    </td>
-                    <td className="status">
-                      <input
-                        className="editable-field"
-                        name="prix"
-                        
-                        dataid={e.id}
-                        onChange = {(r) => modifyDetails(r,e.id)}
-                        onFocus= {clearField}
-                        onBlur ={formatPrice}
-                        datavalue={e.prix}
-                        
-                        
-                        
-                        defaultValue={e.prix + ' DH'}
-                      ></input>
-                    </td>
-                    <td onClick={() => {delOrderProduct(e.id)}} className="delete" ><FontAwesomeIcon  icon={faTrashAlt}  className="trash"/></td>
-                    
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-          <button id="submit"  onClick={() => updateOrder()}>Modifier</button>
-      </Modal>
-      
-      <AnimateNav />
-      <section className="card Supplier">
-        <h1 className="card-title text-center">Historique</h1>
-        <div className="filtre-row seperate">
-        <ThemeProvider theme={materialTheme}>
-        <DatePicker
-        variant="inline"
-        label="Date Debut"
-        value={startDate}
-        onChange={changeStart}
-      />
-      </ThemeProvider>
-      <CustomSelect options={Data.Clients} changeFunc={filter}
-label="name" multi={false} fvalue="id" placeholder="Choisir un Client" />
-     <CustomSelect options={getSubOrder(Orders)} changeFunc={filterID}
-label="o_id" multi={false} searchTerm="o_id" fvalue="id" placeholder="Choisir l'ID" />
-      
-      <ThemeProvider theme={materialTheme}>
-<DatePicker
-        variant="inline"
-        label="Date Fin"
-        value={endDate}
-        onChange={changeEnd}
-      />
-      </ThemeProvider>
-          
-          
-
+            <ThemeProvider theme={materialTheme}>
+              <DatePicker
+                variant="inline"
+                label="Date Fin"
+                value={endDate}
+                onChange={changeEnd}
+              />
+            </ThemeProvider>
           </div>
 
+          {Orders.length == 0 ? NotFound : DataTable}
+          <Pagination
+            data={Orders}
+            seperated={Seperated}
+            handleDirection={handleDirection}
+            active={active}
+          />
+        </>
+      )}
+    </section>
+  </Fragment>
+);
 
-       {Orders.length == 0 ? NotFound : DataTable }
-      </section>
-    </Fragment>
-  );
 
 
-
-  const loader = (
-    <div className="animation-container">
-      <div className="lds-facebook">
-        <div />
-        <div />
-        <div />
-      </div>
-    </div>
-  );
+  
 
   return loading ? (
     loader

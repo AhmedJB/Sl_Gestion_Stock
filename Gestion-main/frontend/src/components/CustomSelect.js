@@ -78,12 +78,14 @@ function CustomSelect(props) {
     labelField= {props.label}
     valueField= {props.fvalue}
     searchable= {true}
+
     placeholder={props.placeholder}
     searchBy={props.searchBy}
     searchTerm={props.searchTerm ? props.searchTerm : "name"}
     color = "#b187ff"
     className ={props.clas ? props.clas + " CustomDropdown" : "CustomDropdown"} 
     clearable = {props.clearable == false ? props.clearable : true}
+    clearOnSelect={true}
     values = {props.values ? props.values : []}
     searchFn={test}
     noDataLabel={"Aucun resultat"}
