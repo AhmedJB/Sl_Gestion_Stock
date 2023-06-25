@@ -799,6 +799,27 @@ main{
     transform: scale(1.2);
 }
 
+.icon-animation {
+    transition: transform .5s linear;
+}
+.icon-animation:hover{
+    transform: scale(1.2);
+}
+
+.add-in-details {
+    width:100%;
+    display:flex;
+    justify-content: center;
+    align-items: center;
+
+}
+
+.addIcon {
+    cursor: pointer;
+    font-size:1.3rem;
+    color:var(--purple);
+}
+
 .CustomSelectMargin{
     margin:0px;
     margin-bottom:15px;
