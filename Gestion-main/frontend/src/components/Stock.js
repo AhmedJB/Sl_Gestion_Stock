@@ -13,12 +13,14 @@ import {
   faExclamationCircle,
   faPrint,
   faTrashAlt,
+  faWarehouse
 } from "@fortawesome/free-solid-svg-icons";
 import CustomSelect from "./CustomSelect";
 import Checkbox from "@mui/material/Checkbox";
 import Modal from "./Modal";
 import usePagination from "./hooks/usePagination";
 import Pagination from "./Utils/Pagination";
+import StockChange from "./Utils/StockChange";
 
 function Stock(props) {
   const { addToast } = useToasts();
@@ -60,6 +62,8 @@ function Stock(props) {
     termonstat :"Termonstat"
   };
   const [Products, setProduct] = useState([]);
+  const [changesOpen,setChangesOpen] =  useState(false);
+  const [changesProdId,setChangesProdId] = useState(null);
   //const [SeperatedProducts,setSeperatedProducts] = useState([]);
   //const [active,setActive] = useState(0); 
 
@@ -709,6 +713,7 @@ function filterPlace(ps) {
             {/* <th>Montant Payé</th> */}
             <th classname="tel">Fournisseur</th>
             <th></th>
+            <th></th>
             <th onClick={print} >
               <FontAwesomeIcon icon={faPrint} className="trash" />{" "}
               {/* <button className="factsubmit" id="submit">Imprimer</button> */}
@@ -748,6 +753,12 @@ function filterPlace(ps) {
                 <td className="edit" onClick={() => modify(e.product.p_id)}>
                   <FontAwesomeIcon icon={faEdit} className="trash" />
                 </td>
+                <td className="edit" onClick={() =>{
+                  setChangesProdId(e.product.id);
+                  setChangesOpen(true)
+                } }>
+                  <FontAwesomeIcon icon={faWarehouse} className="trash" />
+                </td>
                 <td
                   onClick={() => {
                     //del(e.product.p_id);
@@ -786,6 +797,17 @@ function filterPlace(ps) {
                     //delData(e.product.p_id);
                   }} className="factsubmit" id="submit">Supprimer</button>
         </div>
+      </Modal>
+
+      <Modal open={changesOpen} closeFunction={(v) => {
+        setChangesProdId(null);
+        setChangesOpen(false);
+      }}>
+        <h1 className="title-modal m20">Changement stock</h1>
+        {
+          changesProdId && <StockChange productId={changesProdId} />
+        }
+        
       </Modal>
 
       <Modal open={ModifyOpen} closeFunction={setModify}>

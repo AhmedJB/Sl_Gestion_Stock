@@ -10,6 +10,8 @@
     --text : #9DB5B2;
     /* --second : #FAA381; */
     --second : #5900ff;
+    --red : #f74949;
+    --green: #45f445;
 
     --black : #09090c;
     --grey : #a4b2bc;
@@ -1020,4 +1022,19 @@ and (orientation : portrait) {
     min-height: 300px;
     display: grid;
     place-items: center;
+}
+
+.modal-value {
+    padding:10px;
+    border:2px solid var(--purple);
+    color:var(--purple);
+}
+
+.red-text {
+    color:var(--red) !important;
+    
+}
+
+.green-text {
+    color:var(--green) !important;
 }

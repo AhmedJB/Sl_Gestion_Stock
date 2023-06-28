@@ -419,25 +419,30 @@ function HistoryV(props) {
     }
     let order = getOrder(id);
     console.log(order);
-    let b = {
-      o_id: order.order.o_id,
-      mode: order.order.mode,
-      paid: order.order.paid,
-      details: order.details,
-    };
-    let d = {
-      client: order.client,
-      order: {
+    if (order){
+      let b = {
         o_id: order.order.o_id,
-        total: 0,
-        ret: 0,
-        date: order.order.date,
-      },
-      details: [],
-    };
-    setDetails(b);
-    setDeleted(d);
-    setOpen(true);
+        mode: order.order.mode,
+        paid: order.order.paid,
+        details: order.details,
+      };
+      let d = {
+        client: order.client,
+        order: {
+          o_id: order.order.o_id,
+          total: 0,
+          ret: 0,
+          date: order.order.date,
+        },
+        details: [],
+      };
+      setDetails(b);
+      setDeleted(d);
+      setOpen(true);
+    }else{
+      setOpen(false);
+    }
+    
   }
 
   function handlePaiement(v) {
