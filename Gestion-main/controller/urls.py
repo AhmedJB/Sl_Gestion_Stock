@@ -1,4 +1,4 @@
-from django.urls import path
+from django.urls import path,include
 from .views import *
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -6,9 +6,16 @@ from rest_framework_simplejwt.views import (
 )
 
 
+from rest_framework import routers
+
+router = routers.SimpleRouter()
+router.register("mvtstock",MvtStockViewSet,basename="Stock changes")
+router.register("option",OptionCategoriesViewSet,basename="Option manager")
+
+
 
 urlpatterns = [
-   
+    path("",include(router.urls)),
     path('register',Register.as_view()),
     path('token',TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh', TokenRefreshView.as_view(), name='token_refresh'),

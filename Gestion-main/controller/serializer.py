@@ -1,6 +1,6 @@
 from django.db.models.base import Model
-from rest_framework.serializers import ModelSerializer
-from .models import CustomUser,Product,Provider,Options,Invoices,Client,Order,OrderDetails,Echeance
+from rest_framework.serializers import ModelSerializer,SerializerMethodField
+from .models import CustomUser,Product,Provider,Options,Invoices,Client,Order,OrderDetails,Echeance,MvtStock,OptionCategories
 
 
 
@@ -62,3 +62,14 @@ class EcheanceSerializer(ModelSerializer):
         model = Echeance
         fields = ['id','name','total','paid','reste','dateEcheance','date']
 
+class MvtStockSerializer(ModelSerializer):
+
+    class Meta:
+        model = MvtStock
+        fields = "__all__"
+
+class OptionCategoriesSerializer(ModelSerializer):
+
+    class Meta:
+        model = OptionCategories
+        fields = "__all__"

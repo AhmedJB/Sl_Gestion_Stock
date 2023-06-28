@@ -53,6 +53,38 @@ class Product(models.Model):
     def __str__(self):
         return self.name
 
+    def save(self, *args, **kwargs):
+        if self.pk is not None:
+            old_instance = Product.objects.get(pk=self.pk)
+            if old_instance:
+                if old_instance.quantity != self.quantity:    
+                    handleStock(self,old_instance)
+
+        super().save(*args, **kwargs)
+
+
+class MvtStock(models.Model):
+    
+    mvt_type = models.CharField(default="", max_length=255)  # in / out
+    product = models.ForeignKey(Product, on_delete=models.CASCADE)
+    qt_sortie = models.IntegerField(default=0)
+    qt_entree = models.IntegerField(default=0)
+    old_quantity = models.IntegerField(default=0)
+    new_quantity = models.IntegerField(default=0)
+    date = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.mvt_type
+
+def handleStock(p,old):
+    diff = p.quantity - old.quantity
+    if diff > 0 :
+        m = MvtStock.objects.create(mvt_type = "in",product=p,qt_entree = diff,old_quantity=old.quantity,new_quantity=p.quantity)
+        m.save()
+    else:
+        m = MvtStock.objects.create(mvt_type = "out",product=p,qt_sortie = -1*diff,old_quantity=old.quantity,new_quantity=p.quantity)
+        m.save()
+
 class Options(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     metal = models.CharField(max_length=255,default='')
@@ -101,3 +133,11 @@ class Echeance(models.Model):
     reste = models.FloatField(default=0)
     dateEcheance = models.DateTimeField(default=timezone.now())
     date = models.DateTimeField(auto_now_add=True)
+
+
+class OptionCategories(models.Model):
+    name = models.CharField(max_length=255)
+    value = models.CharField(max_length=255)
+
+    def __str__(self):
+        return self.name 

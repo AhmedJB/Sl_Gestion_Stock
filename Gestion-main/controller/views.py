@@ -1,8 +1,9 @@
 from django.shortcuts import render,HttpResponse
 from rest_framework.views import APIView
+from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
 from rest_framework import status,permissions
-from .serializer import ClientSerializer, InvoiceSerializer, OrderDetailsSerializer, OrderSerializer, RegisterSerializer,ProviderSerializer,ProductSerializer,OptionsSerializer,EcheanceSerializer
+from .serializer import ClientSerializer, InvoiceSerializer, OrderDetailsSerializer, OrderSerializer, RegisterSerializer,ProviderSerializer,ProductSerializer,OptionsSerializer,EcheanceSerializer, MvtStockSerializer, OptionCategoriesSerializer
 from .models import *
 from gestionStock.settings import MEDIA_ROOT
 from django.core.files import File
@@ -10,7 +11,8 @@ from .helper import format_fact, format_number
 from br_handler import Generator
 import random
 import datetime as d
-from datetime import datetime, date 
+from datetime import datetime, date ,timedelta
+from urllib.parse import unquote
 from dateutil.relativedelta  import relativedelta
 
 # Create your views here.
@@ -241,6 +243,46 @@ class AddProduct(APIView):
             }
             resps.append(resp)
         return Response(resps,status.HTTP_200_OK)
+
+
+class MvtStockViewSet(ModelViewSet):
+
+    serializer_class = MvtStockSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        pid = self.request.GET.get("pid",False)
+        search_date = self.request.GET.get("searchdate",False)
+        if pid and search_date:
+            product = Product.objects.filter(id = int(pid)).first()
+            if product:
+                # Assuming search_date is a string in the format "2023-06-28T23%3A00%3A00.000Z"
+                decoded_date = unquote(search_date)
+
+                # Convert the decoded string to a datetime object
+                search_datetime = datetime.strptime(decoded_date, "%Y-%m-%dT%H:%M:%S.%fZ")
+
+                # Get the start and end of the day
+                temp_day = search_datetime.replace(hour=0, minute=0, second=0, microsecond=0)
+                start_of_day = temp_day + timedelta(days=1)
+                print(start_of_day)
+                end_of_day = start_of_day + timedelta(days=1)
+                print(end_of_day)
+                mvt_stocks = MvtStock.objects.filter(product=product,date__gte=start_of_day,
+                                                    date__lt=end_of_day).order_by("-date")
+                if len(mvt_stocks) > 0:
+                    return mvt_stocks
+                else:
+                    mvt_stocks = MvtStock.objects.filter(product=product,date__lte=start_of_day).order_by("-date")
+                    return mvt_stocks
+        return []
+    
+class OptionCategoriesViewSet(ModelViewSet):
+
+    serializer_class = OptionCategoriesSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    queryset = OptionCategories.objects.all()
+
 
 
 class ModifyProduct(APIView):

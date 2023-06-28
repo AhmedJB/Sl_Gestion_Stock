@@ -13,7 +13,8 @@ import {
   faExclamationCircle,
   faPrint,
   faTrashAlt,
-  faWarehouse
+  faWarehouse,
+  faPlus
 } from "@fortawesome/free-solid-svg-icons";
 import CustomSelect from "./CustomSelect";
 import Checkbox from "@mui/material/Checkbox";
@@ -79,51 +80,7 @@ function Stock(props) {
   ]);
 
   const [Options, setOptions] = useState([
-    {
-      name: names["eau"],
-      value: "eau",
-    },
-    {
-      name: names["air"],
-      value: "air",
-    },
-    {
-      name: names["clime"],
-      value: "clime",
-    },
-    {
-      name: names["chauf"],
-      value: "chauf",
-    },
-    {
-      name: names["bonchon"],
-      value: "bonchon",
-    }
-    ,
-    {
-      name: names["maneau"],
-      value: "maneau",
-    }
-    ,
-    {
-      name: names["Deurite"],
-      value: "Deurite",
-    }
-    ,
-    {
-      name: names["antifel"],
-      value: "antifel",
-    }
-    ,
-    {
-      name: names["fref"],
-      value: "fref",
-    }
-    ,
-    {
-      name: names["termonstat"],
-      value: "termonstat",
-    }
+    
   ]);
 
   const [Place, setPlace] = useState([
@@ -153,6 +110,13 @@ function Stock(props) {
     },
   });
 
+  const updateOptions = async () => {
+    let resp = await req('option');
+    if (resp) {
+      setOptions(resp);
+    }
+  }
+
   useEffect(() => {
     async function test() {
       let resp = await isLogged();
@@ -164,6 +128,7 @@ function Stock(props) {
         obj.email = resp.email;
         setUser(obj);
         await updateData();
+        await updateOptions();
 
         return obj;
       } else {
