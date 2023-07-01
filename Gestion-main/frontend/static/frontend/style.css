@@ -1038,3 +1038,8 @@ and (orientation : portrait) {
 .green-text {
     color:var(--green) !important;
 }
+
+.flex-container-row {
+    display: flex;
+    align-items: center;
+}

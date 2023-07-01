@@ -1,9 +1,22 @@
-import React, { useState, useEffect, useContext, Fragment,useRef } from "react";
+import React, {
+  useState,
+  useEffect,
+  useContext,
+  Fragment,
+  useRef,
+} from "react";
 import { UserContext } from "../contexts/UserContext";
 import { DataContext } from "../contexts/DataContext";
 import { Redirect } from "react-router-dom";
 import { useToasts } from "react-toast-notifications";
-import { isLogged, req, download_file,post_download_file, logout, postReq } from "../helper";
+import {
+  isLogged,
+  req,
+  download_file,
+  post_download_file,
+  logout,
+  postReq,
+} from "../helper";
 import styled from "styled-components";
 import Nav from "./Nav";
 import AnimateNav from "./AnimateNav";
@@ -14,7 +27,7 @@ import {
   faPrint,
   faTrashAlt,
   faWarehouse,
-  faPlus
+  faPlus,
 } from "@fortawesome/free-solid-svg-icons";
 import CustomSelect from "./CustomSelect";
 import Checkbox from "@mui/material/Checkbox";
@@ -33,7 +46,7 @@ function Stock(props) {
   const [ModifyOpen, setModify] = useState(false);
   const [ConfirmOpen, setConfirm] = useState(false);
   const [viewModify, setViewModify] = useState(false);
-  const [printIDs,setPrintIDs] = useState([]);
+  const [printIDs, setPrintIDs] = useState([]);
   const [modifyData, setModifyData] = useState({
     fournisseur: "",
     product: {
@@ -55,18 +68,18 @@ function Stock(props) {
     air: "Radiateur Air",
     clime: "Radiateur Clime",
     chauf: "Radiateur Chauffage",
-    bonchon : "Bonchon",
-    maneau : "Maneau",
-    Deurite : "Deurite",
-    antifel :"Antifèlle",
-    fref :"Fréférant",
-    termonstat :"Termonstat"
+    bonchon: "Bonchon",
+    maneau: "Maneau",
+    Deurite: "Deurite",
+    antifel: "Antifèlle",
+    fref: "Fréférant",
+    termonstat: "Termonstat",
   };
   const [Products, setProduct] = useState([]);
-  const [changesOpen,setChangesOpen] =  useState(false);
-  const [changesProdId,setChangesProdId] = useState(null);
+  const [changesOpen, setChangesOpen] = useState(false);
+  const [changesProdId, setChangesProdId] = useState(null);
   //const [SeperatedProducts,setSeperatedProducts] = useState([]);
-  //const [active,setActive] = useState(0); 
+  //const [active,setActive] = useState(0);
 
   const [Metal, setMetal] = useState([
     {
@@ -79,9 +92,7 @@ function Stock(props) {
     },
   ]);
 
-  const [Options, setOptions] = useState([
-    
-  ]);
+  const [Options, setOptions] = useState([]);
 
   const [Place, setPlace] = useState([
     {
@@ -111,11 +122,11 @@ function Stock(props) {
   });
 
   const updateOptions = async () => {
-    let resp = await req('option');
+    let resp = await req("option");
     if (resp) {
       setOptions(resp);
     }
-  }
+  };
 
   useEffect(() => {
     async function test() {
@@ -180,43 +191,38 @@ function Stock(props) {
     console.log(SeperatedProducts.length);
     console.log(act);
     setActive(act);
-  } */ 
+  } */
 
+  const [fetchLoading, setFetchLoading] = useState(true);
+  const [selecSupplier, setSelecSupplier] = useState(null);
+  const [selectCat, setSelectCat] = useState(null);
+  const [selectID, setSelectID] = useState(null);
+  const [selectName, setSelectName] = useState(null);
+  const [openOption, setOpenOptions] = useState(false);
 
-
-  const [fetchLoading,setFetchLoading] = useState(true);
-  const [selecSupplier,setSelecSupplier] = useState(null);
-  const [selectCat,setSelectCat] = useState(null);
-  const [selectID,setSelectID] = useState(null);
-  const [selectName,setSelectName] = useState(null);
-
-
- /* useEffect(() => {
+  /* useEffect(() => {
     seperateProducts();
     setActive(0);
   },[Products])*/
 
-  const [SeperatedProducts,active,handleDirection] = usePagination(Products);
+  const [SeperatedProducts, active, handleDirection] = usePagination(Products);
 
   const initiated = useRef(false);
   useEffect(() => {
     if (initiated.current) {
       console.log("this is a callback");
-      console.log(!fetchLoading)
+      console.log(!fetchLoading);
       setFetchLoading(false);
-
-    }else{
+    } else {
       initiated.current = true;
     }
-  },[Products])
-
-
+  }, [Products]);
 
   async function updateProducts() {
     let pResp = await req("product");
     let obj = { ...Data };
     obj.Products = pResp;
-    console.log("updating products")
+    console.log("updating products");
     setProduct(pResp);
     setData(obj);
     return true;
@@ -254,7 +260,7 @@ function Stock(props) {
   function handleOption(vs) {
     let body = { ...Body };
     let v = vs[0];
-    if ( v){
+    if (v) {
       if (v.value == "eau") {
         setView(true);
         body.product.ptype = v.value;
@@ -264,13 +270,13 @@ function Stock(props) {
         body.options.metal = "";
         body.options.type = "";
       }
-    }else{
+    } else {
       setView(false);
       body.product.ptype = 0;
       body.options.metal = "";
       body.options.type = "";
     }
-    
+
     setBody(body);
   }
 
@@ -413,19 +419,18 @@ function Stock(props) {
       let temp = Products[i][key1];
       let found = false;
       let q = temp.quantity;
-      for (let j  = arr.length-1 ; j >= 0;j--){
-        if (arr[j].name == temp.name  && !found){
-          q +=  arr[j].total_quantity
-          found = true
+      for (let j = arr.length - 1; j >= 0; j--) {
+        if (arr[j].name == temp.name && !found) {
+          q += arr[j].total_quantity;
+          found = true;
         }
-        if (arr[j].name == temp.name){
-          arr[j].total_quantity =  q;
-          arr[j].total_name =  arr[j].name + " ("+q+")";
+        if (arr[j].name == temp.name) {
+          arr[j].total_quantity = q;
+          arr[j].total_name = arr[j].name + " (" + q + ")";
         }
-        
       }
-      temp.total_quantity = q
-      temp.total_name = temp.name+" ("+q+")";
+      temp.total_quantity = q;
+      temp.total_name = temp.name + " (" + q + ")";
       arr.push(temp);
     }
     console.log(arr);
@@ -452,7 +457,7 @@ function Stock(props) {
     }
   }
 
-function filterProduct(vs) {
+  function filterProduct(vs) {
     setFetchLoading(true);
     if (vs == "") {
       setSelectID(null);
@@ -466,13 +471,13 @@ function filterProduct(vs) {
           arr.push(produits[i]);
         }
       }
-      setSelectID(vs)
+      setSelectID(vs);
       setProduct(arr);
     }
   }
 
-function filterProductName(vs) {
-  setFetchLoading(true);
+  function filterProductName(vs) {
+    setFetchLoading(true);
     if (vs == "") {
       setSelectName(null);
       updateProducts();
@@ -490,7 +495,7 @@ function filterProductName(vs) {
     }
   }
 
-async function filterFournisseur(fs) {
+  async function filterFournisseur(fs) {
     setFetchLoading(true);
     if (fs == "") {
       setSelecSupplier(null);
@@ -509,7 +514,7 @@ async function filterFournisseur(fs) {
     }
   }
 
-function filterPlace(ps) {
+  function filterPlace(ps) {
     if (ps == "") {
       updateProducts();
     } else {
@@ -538,8 +543,8 @@ function filterPlace(ps) {
     //let resp = await modifySupplier(id);
   }
 
-  async function delData(id){
-    setConfirm(!ConfirmOpen)
+  async function delData(id) {
+    setConfirm(!ConfirmOpen);
     let mod = Products.filter((e) => e.product.p_id == id)[0];
     //console.log(mod);
     if (mod.product.ptype == "eau") {
@@ -599,35 +604,35 @@ function filterPlace(ps) {
     }
   }
 
-  function checkChange(checked,val) {
+  function checkChange(checked, val) {
     //console.log(checked)
     //console.log(val)
-    let copy = [...printIDs]
-    if (checked){
-      if (val != 'all'){
+    let copy = [...printIDs];
+    if (checked) {
+      if (val != "all") {
         copy.push(val);
-      }else{
-        copy = Products.map(e => [e.product.name,e.product.p_id,e.product.quantity])
-
+      } else {
+        copy = Products.map((e) => [
+          e.product.name,
+          e.product.p_id,
+          e.product.quantity,
+        ]);
       }
-      
-    }else{
-      if (val != 'all'){
-      let index = printIDs.findIndex((i) => i == val);
-      //console.log('value is ' + index)
-      copy.splice(index,1);
-      }else{
-        copy = []
+    } else {
+      if (val != "all") {
+        let index = printIDs.findIndex((i) => i == val);
+        //console.log('value is ' + index)
+        copy.splice(index, 1);
+      } else {
+        copy = [];
       }
     }
     //console.log(copy);
     setPrintIDs(copy);
-    
   }
 
-
-  async function print(){
-    let resp = await post_download_file('downloadbr','barcode.pdf',printIDs);
+  async function print() {
+    let resp = await post_download_file("downloadbr", "barcode.pdf", printIDs);
     if (resp) {
       addToast("Fichier Barcode a ete telechare", {
         appearance: "success",
@@ -642,6 +647,37 @@ function filterPlace(ps) {
     }
   }
 
+  const handleOptionOpen = () => {
+    setOpenOptions(true);
+  };
+
+  const closeOptions = () => {
+    setOpenOptions(false);
+  };
+
+  const createCategorie = async () => {
+    let name = document.getElementById("optionName").value;
+    let value = document.getElementById("optionValue").value;
+    let body = {
+      name,
+      value,
+    };
+    let resp = await postReq("option/", body);
+    if (resp) {
+      await updateOptions();
+      addToast("Success", {
+        appearance: "success",
+        autoDismiss: true,
+      });
+      closeOptions();
+    } else {
+      addToast("Failed", {
+        appearance: "error",
+        autoDismiss: true,
+      });
+    }
+  };
+
   const NotFound = (
     <div className="not-found">
       <h2 className="error-text">Resultat : 0</h2>
@@ -652,92 +688,107 @@ function filterPlace(ps) {
   const DataTable = (
     <Fragment>
       <div id="table-wrapper">
-      <table id="status-table">
-        <tbody>
-          <tr>
-            <th>
-              <Checkbox
-                checked={printIDs.length == Products.length ? true : false}
-                onChange={(t) => {checkChange(t.target.checked,'all')}}
-                sx={{
-                  color: "#b187ff",
-                  "&.Mui-checked": {
+        <table id="status-table">
+          <tbody>
+            <tr>
+              <th>
+                <Checkbox
+                  checked={printIDs.length == Products.length ? true : false}
+                  onChange={(t) => {
+                    checkChange(t.target.checked, "all");
+                  }}
+                  sx={{
                     color: "#b187ff",
-                  },
-                }}
-              />
-            </th>
-            <th classname="date">ID</th>
-            <th classname="task-title">Nom du Produit</th>
-            <th classname="status">Categorie</th>
-            {/*  <th>Metal</th>
-          <th classname="tel">Type</th> */}
-            <th>Quantite</th>
-            {/* <th classname="tel">Prix Achat</th> */}
-            <th classname="tel">Prix Vente</th>
-            {/* <th>Montant Payé</th> */}
-            <th classname="tel">Fournisseur</th>
-            <th></th>
-            <th></th>
-            <th onClick={print} >
-              <FontAwesomeIcon icon={faPrint} className="trash" />{" "}
-              {/* <button className="factsubmit" id="submit">Imprimer</button> */}
-            </th>
-          </tr>
-
-          {SeperatedProducts[active] && SeperatedProducts[active].map((e) => {
-            //console.log(e);
-            return (
-              <tr>
-                <td>
-                  <Checkbox
-                    checked={printIDs.findIndex(r => r[1] == e.product.p_id) != -1 ? true : false}
-                    onChange={(t) => {
-                      checkChange(t.target.checked,[e.product.name,e.product.p_id,e.product.quantity]);
-                    }}
-                    sx={{
+                    "&.Mui-checked": {
                       color: "#b187ff",
-                      "&.Mui-checked": {
-                        color: "#b187ff",
-                      },
-                    }}
-                  />
-                </td>
-                <td>{e.product.p_id}</td>
-                <td classname="date">{e.product.name}</td>
-                <td classname="task-title">{names[e.product.ptype]}</td>
-                {/* <td classname="status">{e.options.metal}</td>
+                    },
+                  }}
+                />
+              </th>
+              <th classname="date">ID</th>
+              <th classname="task-title">Nom du Produit</th>
+              <th classname="status">Categorie</th>
+              {/*  <th>Metal</th>
+          <th classname="tel">Type</th> */}
+              <th>Quantite</th>
+              {/* <th classname="tel">Prix Achat</th> */}
+              <th classname="tel">Prix Vente</th>
+              {/* <th>Montant Payé</th> */}
+              <th classname="tel">Fournisseur</th>
+              <th></th>
+              <th></th>
+              <th onClick={print}>
+                <FontAwesomeIcon icon={faPrint} className="trash" />{" "}
+                {/* <button className="factsubmit" id="submit">Imprimer</button> */}
+              </th>
+            </tr>
+
+            {SeperatedProducts[active] &&
+              SeperatedProducts[active].map((e) => {
+                //console.log(e);
+                return (
+                  <tr>
+                    <td>
+                      <Checkbox
+                        checked={
+                          printIDs.findIndex((r) => r[1] == e.product.p_id) !=
+                          -1
+                            ? true
+                            : false
+                        }
+                        onChange={(t) => {
+                          checkChange(t.target.checked, [
+                            e.product.name,
+                            e.product.p_id,
+                            e.product.quantity,
+                          ]);
+                        }}
+                        sx={{
+                          color: "#b187ff",
+                          "&.Mui-checked": {
+                            color: "#b187ff",
+                          },
+                        }}
+                      />
+                    </td>
+                    <td>{e.product.p_id}</td>
+                    <td classname="date">{e.product.name}</td>
+                    <td classname="task-title">{names[e.product.ptype]}</td>
+                    {/* <td classname="status">{e.options.metal}</td>
           <td classname="date">
             {e.options.type}
           </td> */}
-                <td classname="status">{e.product.quantity}</td>
-                {/* <td classname="status">{e.product.price_achat + ' DH'}</td> */}
-                <td classname="status">{e.product.price_vente + " DH"}</td>
-                {/* <td>{e.product.paid + ' DH'}</td> */}
-                <td classname="status">{getSupp(e.fournisseur.id)}</td>
-                <td className="edit" onClick={() => modify(e.product.p_id)}>
-                  <FontAwesomeIcon icon={faEdit} className="trash" />
-                </td>
-                <td className="edit" onClick={() =>{
-                  setChangesProdId(e.product.id);
-                  setChangesOpen(true)
-                } }>
-                  <FontAwesomeIcon icon={faWarehouse} className="trash" />
-                </td>
-                <td
-                  onClick={() => {
-                    //del(e.product.p_id);
-                    delData(e.product.p_id);
-                  }}
-                  className="delete"
-                >
-                  <FontAwesomeIcon icon={faTrashAlt} className="trash" />
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                    <td classname="status">{e.product.quantity}</td>
+                    {/* <td classname="status">{e.product.price_achat + ' DH'}</td> */}
+                    <td classname="status">{e.product.price_vente + " DH"}</td>
+                    {/* <td>{e.product.paid + ' DH'}</td> */}
+                    <td classname="status">{getSupp(e.fournisseur.id)}</td>
+                    <td className="edit" onClick={() => modify(e.product.p_id)}>
+                      <FontAwesomeIcon icon={faEdit} className="trash" />
+                    </td>
+                    <td
+                      className="edit"
+                      onClick={() => {
+                        setChangesProdId(e.product.id);
+                        setChangesOpen(true);
+                      }}
+                    >
+                      <FontAwesomeIcon icon={faWarehouse} className="trash" />
+                    </td>
+                    <td
+                      onClick={() => {
+                        //del(e.product.p_id);
+                        delData(e.product.p_id);
+                      }}
+                      className="delete"
+                    >
+                      <FontAwesomeIcon icon={faTrashAlt} className="trash" />
+                    </td>
+                  </tr>
+                );
+              })}
+          </tbody>
+        </table>
       </div>
     </Fragment>
   );
@@ -755,24 +806,32 @@ function filterPlace(ps) {
   const html = (
     <Fragment>
       <Modal open={ConfirmOpen} closeFunction={setConfirm}>
-        <h1 className="title-modal m20">{"Voulez-vous supprimer le produit "+modifyData.product.name +" ?"}</h1>
-        <div className='modal-input-row'>
-        <button onClick={() => {
-                    del(modifyData.product.p_id);
-                    //delData(e.product.p_id);
-                  }} className="factsubmit" id="submit">Supprimer</button>
+        <h1 className="title-modal m20">
+          {"Voulez-vous supprimer le produit " + modifyData.product.name + " ?"}
+        </h1>
+        <div className="modal-input-row">
+          <button
+            onClick={() => {
+              del(modifyData.product.p_id);
+              //delData(e.product.p_id);
+            }}
+            className="factsubmit"
+            id="submit"
+          >
+            Supprimer
+          </button>
         </div>
       </Modal>
 
-      <Modal open={changesOpen} closeFunction={(v) => {
-        setChangesProdId(null);
-        setChangesOpen(false);
-      }}>
+      <Modal
+        open={changesOpen}
+        closeFunction={(v) => {
+          setChangesProdId(null);
+          setChangesOpen(false);
+        }}
+      >
         <h1 className="title-modal m20">Changement stock</h1>
-        {
-          changesProdId && <StockChange productId={changesProdId} />
-        }
-        
+        {changesProdId && <StockChange productId={changesProdId} />}
       </Modal>
 
       <Modal open={ModifyOpen} closeFunction={setModify}>
@@ -908,7 +967,7 @@ function filterPlace(ps) {
               changeFunc={handleOption}
               label="name"
               fvalue="value"
-              placeholder="Choisir un Produit"
+              placeholder="Choisir une Categorie"
             />
             {/* <CustomSelect options={Place}  changeFunc={handlePlace}
   label="name" fvalue="value"  placeholder="Choisir une Place" /> */}
@@ -978,27 +1037,49 @@ function filterPlace(ps) {
           </button>
         </div>
       </Modal>
+
+      {/* modal for adding option */}
+
+      <Modal open={openOption} closeFunction={closeOptions}>
+        <h1 className="title-modal m20">Ajout de categorie</h1>
+        <div className="modal-input">
+          <div className="input-wrapper">
+            <label for="name">Nom</label>
+            <input type="text" id="optionName"></input>
+          </div>
+
+          <div className="input-wrapper">
+            <label for="name">Valeur</label>
+            <input type="text" id="optionValue"></input>
+          </div>
+
+          <button id="submit" onClick={createCategorie} className="modalSubmit">
+            Creer
+          </button>
+        </div>
+      </Modal>
+
+      {/* end modal for adding option */}
+
       <AnimateNav />
       <section className="card Supplier">
         <h1 className="card-title text-center">Stock</h1>
-            {
-              fetchLoading ? 
-              <div className="section-loader-container">
-                {loader}
-              </div>
-               : <>
-
-              <div className="filtre-row">
-                <div className="filtre-group">
-                  <CustomSelect
-                    options={Data.Suppliers}
-                    changeFunc={filterFournisseur}
-                    label="name"
-                    fvalue="id"
-                    searchBy="name"
-                    placeholder="Choisir un Fournisseur"
-                    values={selecSupplier}
-                  />
+        {fetchLoading ? (
+          <div className="section-loader-container">{loader}</div>
+        ) : (
+          <>
+            <div className="filtre-row">
+              <div className="filtre-group">
+                <CustomSelect
+                  options={Data.Suppliers}
+                  changeFunc={filterFournisseur}
+                  label="name"
+                  fvalue="id"
+                  searchBy="name"
+                  placeholder="Choisir un Fournisseur"
+                  values={selecSupplier}
+                />
+                <div className="flex-container-row">
                   <CustomSelect
                     options={Options}
                     changeFunc={filterCat}
@@ -1007,53 +1088,60 @@ function filterPlace(ps) {
                     placeholder="Choisir une Categorie"
                     values={selectCat}
                   />
-                  {/* <CustomSelect options={Place} changeFunc={filterPlace}
-        label="name" fvalue="value" placeholder="Choisir une Place" /> */}
-                  <CustomSelect
-                    options={getarray("product")}
-                    changeFunc={filterProduct}
-                    label="p_id"
-                    fvalue="p_id"
-                    placeholder="Choisir un ID"
-                    values={selectID}
-                  />
-                  <CustomSelect
-                    options={getarray("product")}
-                    changeFunc={filterProductName}
-                    label="total_name"
-                    fvalue="p_id"
-                    placeholder="Choisir un produit"
-                    values={selectName}
-                  />
+                  {/* <FontAwesomeIcon icon={faPlus} className="trash" /> */}
                 </div>
-      
-                <button
-                  class="btn-main"
-                  onClick={() => {
-                    handleOpen();
-                  }}
-                >
-                  Ajouter un Produit
-                </button>
+
+                {/* <CustomSelect options={Place} changeFunc={filterPlace}
+        label="name" fvalue="value" placeholder="Choisir une Place" /> */}
+                <CustomSelect
+                  options={getarray("product")}
+                  changeFunc={filterProduct}
+                  label="p_id"
+                  fvalue="p_id"
+                  placeholder="Choisir un ID"
+                  values={selectID}
+                />
+                <CustomSelect
+                  options={getarray("product")}
+                  changeFunc={filterProductName}
+                  label="total_name"
+                  fvalue="p_id"
+                  placeholder="Choisir un produit"
+                  values={selectName}
+                />
               </div>
-      
-              {Products.length == 0 ? NotFound : DataTable}
-              <Pagination data={Products} seperated={SeperatedProducts} handleDirection={handleDirection} active={active}  />
-              
-      
-              
-              
-            </>
-            }
-        
-        
-        
+
+              <button
+                class="btn-main"
+                onClick={() => {
+                  handleOptionOpen();
+                }}
+              >
+                Ajouter une categorie
+              </button>
+
+              <button
+                class="btn-main"
+                onClick={() => {
+                  handleOpen();
+                }}
+              >
+                Ajouter un Produit
+              </button>
+            </div>
+
+            {Products.length == 0 ? NotFound : DataTable}
+            <Pagination
+              data={Products}
+              seperated={SeperatedProducts}
+              handleDirection={handleDirection}
+              active={active}
+            />
+          </>
+        )}
       </section>
-      
     </Fragment>
   );
-
-  
 
   return loading ? (
     loader

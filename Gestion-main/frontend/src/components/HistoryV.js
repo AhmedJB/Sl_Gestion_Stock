@@ -94,6 +94,17 @@ function HistoryV(props) {
     },
   ]);
 
+  const [transportOptions, setTransportOptions] = useState([
+    {
+      name: "CTM",
+      id: 0,
+    },
+    {
+      name: "Amana",
+      id: 1,
+    },
+  ]);
+
   const [filteredClient, setFilteredClient] = useState(null);
   const [filteredID, setFilteredID] = useState(null);
 
@@ -419,10 +430,11 @@ function HistoryV(props) {
     }
     let order = getOrder(id);
     console.log(order);
-    if (order){
+    if (order) {
       let b = {
         o_id: order.order.o_id,
         mode: order.order.mode,
+        transport: order.order.transport,
         paid: order.order.paid,
         details: order.details,
       };
@@ -439,16 +451,21 @@ function HistoryV(props) {
       setDetails(b);
       setDeleted(d);
       setOpen(true);
-    }else{
+    } else {
       setOpen(false);
     }
-    
   }
 
   function handlePaiement(v) {
     console.log(v);
     let c = { ...Details };
     c.mode = v[0].id;
+    setDetails(c);
+  }
+  function handleTransport(v) {
+    console.log(v);
+    let c = { ...Details };
+    c.transport = v[0].name;
     setDetails(c);
   }
 
@@ -1143,6 +1160,7 @@ function HistoryV(props) {
               <th classname="tel">Total</th>
               <th classname="tel">Credit</th>
               <th>Mode Paiement</th>
+              <th>Transport</th>
               <th>Date</th>
               <th>Facture</th>
               <th>Bon</th>
@@ -1160,6 +1178,7 @@ function HistoryV(props) {
                       {Number(e.order.total) - Number(e.order.paid) + "DH"}
                     </td>
                     <td>{getOption(e.order.mode)}</td>
+                    <td>{e.order.transport}</td>
                     <td className="task-title">
                       {new Date(e.order.date).toLocaleDateString(
                         "fr-FR",
@@ -1226,6 +1245,17 @@ function HistoryV(props) {
             values={PaymentOptions.filter((e) => e.id == Details.mode)}
             fvalue="id"
             placeholder="Mode de paiement"
+          />
+        </div>
+        <div className="modal-input-row">
+          <CustomSelect
+            options={transportOptions}
+            changeFunc={handleTransport}
+            label="name"
+            multi={false}
+            values={transportOptions.filter((e) => e.name == Details.transport)}
+            fvalue="id"
+            placeholder="Mode de transport"
           />
         </div>
         <div className="modal-input">

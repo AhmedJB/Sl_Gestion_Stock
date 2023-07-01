@@ -551,6 +551,7 @@ class ModOrder(APIView):
         o.total = total
         o.paid = data['details']['paid']  - data['ret']
         o.mode = data['details']['mode']
+        o.transport = data['details']['transport']
         for dl in data['deleted']:
             od = OrderDetails.objects.filter(id=dl['id'])[0]
             if (od.provider_id == -1 and od.product_id == -1):

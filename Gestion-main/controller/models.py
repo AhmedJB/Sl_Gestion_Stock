@@ -108,6 +108,7 @@ class Order(models.Model):
     total = models.FloatField(default=0)
     paid = models.FloatField(default=0)
     mode = models.IntegerField(default=0)
+    transport = models.CharField(default="CTM",max_length=255)
     o_id = models.CharField(max_length=255,default="")
     date = models.DateTimeField(auto_now_add=True)
 
