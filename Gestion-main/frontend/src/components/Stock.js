@@ -28,6 +28,7 @@ import {
   faTrashAlt,
   faWarehouse,
   faPlus,
+  faSearch,
 } from "@fortawesome/free-solid-svg-icons";
 import CustomSelect from "./CustomSelect";
 import Checkbox from "@mui/material/Checkbox";
@@ -35,6 +36,7 @@ import Modal from "./Modal";
 import usePagination from "./hooks/usePagination";
 import Pagination from "./Utils/Pagination";
 import StockChange from "./Utils/StockChange";
+import stringSimilarity from "string-similarity";
 
 function Stock(props) {
   const { addToast } = useToasts();
@@ -199,6 +201,8 @@ function Stock(props) {
   const [selectID, setSelectID] = useState(null);
   const [selectName, setSelectName] = useState(null);
   const [openOption, setOpenOptions] = useState(false);
+  const [openSim, setOpenSim] = useState(false);
+  const [similars, setSimilars] = useState([]);
 
   /* useEffect(() => {
     seperateProducts();
@@ -678,6 +682,41 @@ function Stock(props) {
     }
   };
 
+  function sortByRatingDescending(array) {
+    return array.sort((a, b) => b.rating - a.rating);
+  }
+
+  const handleOpenSim = () => {
+    let name = document.getElementById("name").value;
+    console.log("name is ", name);
+    if (name.length > 0) {
+      let produits = Data.Products;
+      let elements = produits.map((e) => e.product.name);
+      let matches = stringSimilarity.findBestMatch(name, elements);
+      let sortedMatches = sortByRatingDescending(matches.ratings).slice(0, 5);
+      console.log("the sorted matches are ", sortedMatches);
+      let sortedArray = sortedMatches.map((e) => e.target);
+      console.log("sorted array ", sortedArray);
+      let filteredMatches = [];
+      for (let i = 0; i < sortedArray.length; i++) {
+        for (let j = 0; j < produits.length; j++) {
+          if (produits[j].product.name === sortedArray[i]) {
+            filteredMatches.push(produits[j]);
+            break;
+          }
+        }
+      }
+      console.log("result : ", filteredMatches);
+      setSimilars(filteredMatches);
+    }
+    setOpenSim(true);
+  };
+
+  const handleCloseSim = () => {
+    setSimilars([]);
+    setOpenSim(false);
+  };
+
   const NotFound = (
     <div className="not-found">
       <h2 className="error-text">Resultat : 0</h2>
@@ -975,7 +1014,14 @@ function Stock(props) {
 
           <div className="input-wrapper">
             <label for="name">Nom du produit</label>
-            <input type="text" id="name"></input>
+            <div className="flex-container-row">
+              <input type="text" id="name"></input>
+              <FontAwesomeIcon
+                onClick={handleOpenSim}
+                icon={faSearch}
+                className="trash icon-m"
+              />
+            </div>
           </div>
           {viewOptions && (
             <div className="input-wrapper">
@@ -1038,6 +1084,30 @@ function Stock(props) {
         </div>
       </Modal>
 
+      {/* show similar products */}
+
+      <Modal open={openSim} closeFunction={handleCloseSim}>
+        <h1 className="title-modal m20">Similar Things</h1>
+        <div id="table-wrapper">
+          <table id="status-table">
+            <tbody>
+              <tr>
+                <th>ID</th>
+                <th>Nom</th>
+              </tr>
+              {similars.map((e, i) => (
+                <tr key={`matches-${i}`}>
+                  <td>{e.product.p_id}</td>
+                  <td>{e.product.name}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Modal>
+
+      {/* end modal */}
+
       {/* modal for adding option */}
 
       <Modal open={openOption} closeFunction={closeOptions}>
@@ -1098,6 +1168,7 @@ function Stock(props) {
                   changeFunc={filterProduct}
                   label="p_id"
                   fvalue="p_id"
+                  searchTerm="p_id"
                   placeholder="Choisir un ID"
                   values={selectID}
                 />

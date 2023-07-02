@@ -1043,3 +1043,7 @@ and (orientation : portrait) {
     display: flex;
     align-items: center;
 }
+
+.icon-m {
+    margin:0px 10px;
+}
