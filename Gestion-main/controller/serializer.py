@@ -1,6 +1,6 @@
 from django.db.models.base import Model
 from rest_framework.serializers import ModelSerializer,SerializerMethodField
-from .models import CustomUser,Product,Provider,Options,Invoices,Client,Order,OrderDetails,Echeance,MvtStock,OptionCategories,ProductImage
+from .models import CustomUser,Product,Provider,Options,Invoices,Client,Order,OrderDetails,Echeance,MvtStock,OptionCategories,ProductImage,TransportOption
 
 
 
@@ -40,6 +40,10 @@ class OrderDetailsSerializer(ModelSerializer):
         model = OrderDetails
         fields = ['id','product_name','quantity','prix','prix_achat','provider_id','product_id']
 
+class GeneralOrderDetailsSerializer(ModelSerializer):
+    class Meta:
+        model = OrderDetails
+        fields = "__all__"
 
 class ProductSerializer(ModelSerializer):
     class Meta:
@@ -79,6 +83,13 @@ class OptionCategoriesSerializer(ModelSerializer):
 
     class Meta:
         model = OptionCategories
+        fields = "__all__"
+
+
+class TransportOptionsSerializer(ModelSerializer):
+
+    class Meta:
+        model = TransportOption
         fields = "__all__"
 
 

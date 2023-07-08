@@ -11,7 +11,9 @@ from rest_framework import routers
 router = routers.SimpleRouter()
 router.register("mvtstock",MvtStockViewSet,basename="Stock changes")
 router.register("option",OptionCategoriesViewSet,basename="Option manager")
-router.register("upload",ProductImageViewSet,basename="Imagee manager")
+router.register("transport",TransportOptionViewSet,basename="Transport manager")
+router.register("upload",ProductImageViewSet,basename="Image manager")
+#router.register("detailsadd",AddDetailsViewSet,basename="Details manager")
 
 
 
@@ -28,6 +30,7 @@ urlpatterns = [
     path('modclient/<int:id>',ModifyClient.as_view()),
     path('product',AddProduct.as_view()),
     path('silentpd',SilentGetProducts.as_view()),
+    path('detailsadd/',AddDetails.as_view()),
     
     path('modproduct/<str:id>',ModifyProduct.as_view()),
     path('getproduct/<str:id>',OrderProduct.as_view()),

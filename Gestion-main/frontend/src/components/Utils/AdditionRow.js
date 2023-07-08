@@ -65,11 +65,11 @@ function AdditionRow({ products, deleteFromList, orderID, updateOrders }) {
         provider_id: selectedProduct.fournisseur.id,
         product_id: selectedProduct.product.id,
         product_name: selectedProduct.product.name,
-        quantity: quantity,
-        price: price,
-        achat: selectedProduct.product.price_achat,
+        quantity: Number(quantity),
+        prix: Number(price),
+        prix_achat: selectedProduct.product.price_achat,
       };
-      let resp = await postReq("detailsadd", body);
+      let resp = await postReq("detailsadd/", body);
       if (resp) {
         await updateOrders();
         deleteFromList();

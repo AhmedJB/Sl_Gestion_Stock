@@ -105,6 +105,9 @@ function HistoryV(props) {
     },
   ]);
 
+  const [openTransport,setOpenTransport] = useState(false)
+  
+
   const [filteredClient, setFilteredClient] = useState(null);
   const [filteredID, setFilteredID] = useState(null);
 
@@ -117,6 +120,15 @@ function HistoryV(props) {
   const [products, setProducts] = useState([]);
   const [addedRows, setAddedRows] = useState([]);
   const [chosenOrderID, setChosenOrderID] = useState(null);
+
+
+
+  const updateTransport = async () => {
+    let resp = await req("transport");
+    if (resp) {
+      setTransportOptions(resp);
+    }
+  };
 
   // effect for  the callback loader
   const initiated = useRef(false);
@@ -213,6 +225,7 @@ function HistoryV(props) {
         await updateClients();
         await updateOrders();
         await getProducts();
+        await updateTransport();
         return obj;
       } else {
         logout(setUser, User);
@@ -652,6 +665,35 @@ function HistoryV(props) {
     };
 
     setAddedRows([...addedRows, temp]);
+  };
+
+  const openOption = () => {
+    setOpenTransport(true);
+  }
+
+  const closeOptions = () => {
+    setOpenTransport(false);
+  }
+
+  const createTransport = async () => {
+    let name = document.getElementById("optionName").value;
+    let body = {
+      name,
+    };
+    let resp = await postReq("transport/", body);
+    if (resp) {
+      await updateTransport();
+      addToast("Success", {
+        appearance: "success",
+        autoDismiss: true,
+      });
+      closeOptions();
+    } else {
+      addToast("Failed", {
+        appearance: "error",
+        autoDismiss: true,
+      });
+    }
   };
 
   const bon = SelectedOrder.details.map((order, i) => {
@@ -1234,6 +1276,25 @@ function HistoryV(props) {
 
   const html = (
     <Fragment>
+
+      {/* modal for adding transport */}
+
+      <Modal open={openTransport} closeFunction={closeOptions}>
+        <h1 className="title-modal m20">Ajouter un transport</h1>
+        <div className="modal-input">
+          <div className="input-wrapper">
+            <label for="name">Nom</label>
+            <input type="text" id="optionName"></input>
+          </div>
+
+
+          <button id="submit" onClick={createTransport} className="modalSubmit">
+            Creer
+          </button>
+        </div>
+      </Modal>
+
+      {/* end modal for adding transport */}
       <Modal open={Open} closeFunction={handleClose}>
         <h1 className="title-modal m20">Detail de Commande</h1>
         <div className="modal-input-row">
@@ -1403,6 +1464,14 @@ function HistoryV(props) {
                 values={filteredClient}
                 placeholder="Choisir un Client"
               />
+              <button
+                class="btn-main"
+                onClick={() => {
+                  openOption();
+                }}
+              >
+                Ajouter Transport
+              </button>
               <CustomSelect
                 options={getSubOrder(Orders)}
                 changeFunc={filterID}

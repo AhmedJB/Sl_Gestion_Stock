@@ -105,6 +105,7 @@ class Options(models.Model):
         return self.metal
 
 
+
 class Invoices(models.Model):
     f_id = models.CharField(max_length=255,default='')
     path  = models.CharField(max_length=255,default='')
@@ -122,7 +123,7 @@ class Order(models.Model):
     total = models.FloatField(default=0)
     paid = models.FloatField(default=0)
     mode = models.IntegerField(default=0)
-    transport = models.CharField(default="CTM",max_length=255)
+    transport = models.CharField(default="Domicile",max_length=255)
     o_id = models.CharField(max_length=255,default="")
     date = models.DateTimeField(auto_now_add=True)
 
@@ -157,3 +158,8 @@ class OptionCategories(models.Model):
     def __str__(self):
         return self.name 
     
+class TransportOption(models.Model):
+    name = models.CharField(max_length=255,default="")
+
+    def __str__(self):
+        return self.name

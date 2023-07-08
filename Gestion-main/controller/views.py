@@ -3,7 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
 from rest_framework import status,permissions
-from .serializer import ClientSerializer, InvoiceSerializer, OrderDetailsSerializer, OrderSerializer, RegisterSerializer,ProviderSerializer,ProductSerializer,OptionsSerializer,EcheanceSerializer, MvtStockSerializer, OptionCategoriesSerializer,ProductImageSerializer
+from .serializer import ClientSerializer, InvoiceSerializer, OrderDetailsSerializer, OrderSerializer, RegisterSerializer,ProviderSerializer,ProductSerializer,OptionsSerializer,EcheanceSerializer, MvtStockSerializer, OptionCategoriesSerializer,ProductImageSerializer,GeneralOrderDetailsSerializer,TransportOptionsSerializer
 from .models import *
 from gestionStock.settings import MEDIA_ROOT
 from django.core.files import File
@@ -323,6 +323,12 @@ class OptionCategoriesViewSet(ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     queryset = OptionCategories.objects.all()
 
+class TransportOptionViewSet(ModelViewSet):
+
+    serializer_class = TransportOptionsSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    queryset = TransportOption.objects.all()
+
 
 
 class ModifyProduct(APIView):
@@ -382,6 +388,7 @@ class ModifyProduct(APIView):
         }
 
         return Response(resp,status.HTTP_200_OK)
+
 
 
 class OrderProduct(APIView):
@@ -629,6 +636,55 @@ class ModOrder(APIView):
         if len(data['details']['details']) == 0:
             o.delete()
         return Response(resp , status.HTTP_200_OK)
+    
+
+""" class AddDetailsViewSet(ModelViewSet):
+    permission_classes = [permissions.IsAuthenticated]
+    serializer_class =  GeneralOrderDetailsSerializer
+    queryset = OrderDetails.objects.all() """
+
+class AddDetails(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self,request):
+        try:
+            data = request.data 
+            order = Order.objects.filter(o_id=data['order']).first()
+            if order:
+                data['order'] = order.id
+                print(data)
+                od_s = GeneralOrderDetailsSerializer(data=data)
+                if  od_s.is_valid():
+                    print("valid")
+                    od = od_s.save()
+                    product = Product.objects.filter(id=od.product_id)
+                    if len(product) == 0:
+                        print('product not found')
+                    else:
+                        p = product[0]
+                        diff = od.quantity - data['quantity']
+                        big_diff = p.quantity + diff
+                        if big_diff < 0:
+                            od.delete()
+                            return Response({},status.HTTP_500_INTERNAL_SERVER_ERROR)
+                        else:
+                            p.quantity = big_diff
+                            p.save()
+                        return Response({},status.HTTP_201_CREATED)
+                else:
+                    
+                    print(od_s.errors)
+                    return Response({},status.HTTP_500_INTERNAL_SERVER_ERROR)
+            else:
+                    return Response({},status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except:
+            od.delete()
+            return Response({},status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            
+
+
+
 
 
 def convertdatetime(n):
