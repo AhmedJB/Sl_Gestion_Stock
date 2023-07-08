@@ -1,5 +1,9 @@
+
+
+
 const api = '/api/'
 var fileDownload = require('js-file-download');
+var axios = require('axios')
 
 function set_header(token = null){
     try {
@@ -310,6 +314,97 @@ export async function req_body(url,body){
             return false;
         }
     }else {
+        console.log('other errors');
+        return false;
+    }
+
+
+}
+
+
+export async function addImage(product = null,  files = null) {
+    let form_data = new FormData();
+    let access = sessionStorage.getItem('accessToken');
+    //access =  "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNjQ4OTc3OTkwLCJqdGkiOiIyY2EyY2NjMjFmMjQ0YjQyYTc3MjgzYjAzZGM2MTdhMSIsInVzZXJfaWQiOjJ9.uGyjMDKwWTMowoBgxNLiDbfijFcwutbKBkLNrXlvnTA"
+    let headers = set_header(access, true);
+    let body = {
+        product
+    }
+    console.log(body);
+    let key = "image"
+    let endpoint = "upload/"
+    for (let i = 0; i < files.length; i++) {
+        form_data.append(key, files[i], files[i].name);
+    }
+
+    for (let key of Object.keys(body)) {
+        form_data.append(key, body[key]);
+    }
+
+    let url = api + endpoint;
+    try {
+        let resp = await axios.post(url, form_data, {
+            headers
+        })
+        console.log(resp.status)
+        console.log(resp.data)
+
+        if (resp.status == 201) {
+            return true
+        }
+        else if (resp.status == 200 || resp.status == 400) {
+
+            return resp.data
+        }
+        else {
+            console.log("other errors")
+            return false;
+        }
+    } catch (error) {
+        let resp = error.response
+        console.log(resp)
+        if (resp.status == 401) {
+            let dec = await refreshToken();
+            if (dec) {
+                return addImage(product, files);
+            } else {
+
+                return false;
+            }
+
+        } else {
+            console.log("other errors")
+            return false;
+        }
+
+    }
+
+
+}
+
+
+export async function deleteReq(url) {
+    let access = sessionStorage.getItem('accessToken');
+    let headers = set_header(access);
+
+    let options = {
+        method: 'delete',
+        headers: headers,
+        mode: 'cors'
+    }
+
+    let preResp = await fetch(api + url, options);
+    if (preResp.ok) {
+        try{
+            let resp = await preResp.json();
+        return resp;
+        }catch {
+            return true;
+        }
+        
+    } else if (preResp.status == 401) {
+        return false;
+    } else {
         console.log('other errors');
         return false;
     }

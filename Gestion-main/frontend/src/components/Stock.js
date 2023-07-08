@@ -29,6 +29,7 @@ import {
   faWarehouse,
   faPlus,
   faSearch,
+  faUpload
 } from "@fortawesome/free-solid-svg-icons";
 import CustomSelect from "./CustomSelect";
 import Checkbox from "@mui/material/Checkbox";
@@ -37,6 +38,7 @@ import usePagination from "./hooks/usePagination";
 import Pagination from "./Utils/Pagination";
 import StockChange from "./Utils/StockChange";
 import stringSimilarity from "string-similarity";
+import UploadHandler from "./Utils/UploadHandler";
 
 function Stock(props) {
   const { addToast } = useToasts();
@@ -204,6 +206,11 @@ function Stock(props) {
   const [openSim, setOpenSim] = useState(false);
   const [similars, setSimilars] = useState([]);
 
+  /* upload states */
+  const [uploadOpen,setUploadOpen] = useState(false);
+  const [selectedProductImage, setSelectedProductImage] =  useState(null);
+  /*  */
+
   /* useEffect(() => {
     seperateProducts();
     setActive(0);
@@ -221,6 +228,18 @@ function Stock(props) {
       initiated.current = true;
     }
   }, [Products]);
+
+
+  useEffect(()  => {
+    if (selectedProductImage){
+      let prod = Products.filter(e => e.product.id === selectedProductImage.product.id)
+      if (prod.length > 0){
+        setSelectedProductImage(prod[0])
+      }else{
+        handleCloseUpload();
+      }
+    }
+  },[Products])
 
   async function updateProducts() {
     let pResp = await req("product");
@@ -717,6 +736,20 @@ function Stock(props) {
     setOpenSim(false);
   };
 
+
+
+
+
+  const  handleOpenUpload = (e) => {
+    setSelectedProductImage(e);
+    setUploadOpen(true);
+  }
+
+  const handleCloseUpload = () => {
+    setSelectedProductImage(null);
+    setUploadOpen(false)
+  }
+
   const NotFound = (
     <div className="not-found">
       <h2 className="error-text">Resultat : 0</h2>
@@ -754,6 +787,7 @@ function Stock(props) {
               <th classname="tel">Prix Vente</th>
               {/* <th>Montant Payé</th> */}
               <th classname="tel">Fournisseur</th>
+              <th></th>
               <th></th>
               <th></th>
               <th onClick={print}>
@@ -815,6 +849,14 @@ function Stock(props) {
                       <FontAwesomeIcon icon={faWarehouse} className="trash" />
                     </td>
                     <td
+                      className="edit"
+                      onClick={() => {
+                        handleOpenUpload(e);
+                      }}
+                    >
+                      <FontAwesomeIcon icon={faUpload} className="trash" />
+                    </td>
+                    <td
                       onClick={() => {
                         //del(e.product.p_id);
                         delData(e.product.p_id);
@@ -860,6 +902,10 @@ function Stock(props) {
             Supprimer
           </button>
         </div>
+      </Modal>
+
+      <Modal open={uploadOpen} closeFunction={handleCloseUpload}>
+        <UploadHandler product={selectedProductImage} refresh={updateProducts} />
       </Modal>
 
       <Modal

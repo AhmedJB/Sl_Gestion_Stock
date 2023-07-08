@@ -1047,3 +1047,13 @@ and (orientation : portrait) {
 .icon-m {
     margin:0px 10px;
 }
+
+.carousel-img{
+    width:300px;
+    height:800px;
+}
+
+.thumb img {
+    width:80px !important;
+    height:80px  !important;
+}
