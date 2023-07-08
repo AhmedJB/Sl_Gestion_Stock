@@ -3,6 +3,7 @@ from django.utils import timezone
 from django.contrib.auth.models import AbstractUser
 
 
+
 # Create your models here.
 
 class CustomUser(AbstractUser):
@@ -38,6 +39,8 @@ class Client(models.Model):
 
 
 
+
+
 class Product(models.Model):
     provider = models.ForeignKey(Provider , on_delete=models.CASCADE)
     p_id = models.CharField(max_length=255,default='')
@@ -61,6 +64,14 @@ class Product(models.Model):
                     handleStock(self,old_instance)
 
         super().save(*args, **kwargs)
+
+class ProductImage(models.Model):
+    product = models.ForeignKey(Product,on_delete=models.CASCADE)
+    image = models.ImageField(upload_to="products")
+    date = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.product.p_id
 
 
 class MvtStock(models.Model):
@@ -101,6 +112,9 @@ class Invoices(models.Model):
 
     def __str__(self):
         return self.f_id
+    
+""" class TestDjangoModel(models.Model):
+    name = models.CharField(default='',max_length=255) """
 
 
 class Order(models.Model):
@@ -132,7 +146,7 @@ class Echeance(models.Model):
     total = models.FloatField(default = 0)
     paid = models.FloatField(default=0)
     reste = models.FloatField(default=0)
-    dateEcheance = models.DateTimeField(default=timezone.now())
+    dateEcheance = models.DateTimeField(default=timezone.now)
     date = models.DateTimeField(auto_now_add=True)
 
 
@@ -142,3 +156,4 @@ class OptionCategories(models.Model):
 
     def __str__(self):
         return self.name 
+    

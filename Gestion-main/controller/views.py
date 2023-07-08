@@ -3,7 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
 from rest_framework import status,permissions
-from .serializer import ClientSerializer, InvoiceSerializer, OrderDetailsSerializer, OrderSerializer, RegisterSerializer,ProviderSerializer,ProductSerializer,OptionsSerializer,EcheanceSerializer, MvtStockSerializer, OptionCategoriesSerializer
+from .serializer import ClientSerializer, InvoiceSerializer, OrderDetailsSerializer, OrderSerializer, RegisterSerializer,ProviderSerializer,ProductSerializer,OptionsSerializer,EcheanceSerializer, MvtStockSerializer, OptionCategoriesSerializer,ProductImageSerializer
 from .models import *
 from gestionStock.settings import MEDIA_ROOT
 from django.core.files import File
@@ -236,13 +236,53 @@ class AddProduct(APIView):
         for product  in products:
             supplier = product.provider
             options = product.options_set.all()[0]
+            images = ProductImage.objects.filter(product=product)
             resp = {
             'fournisseur':ProviderSerializer(supplier).data,
             'product':ProductSerializer(product).data,
-            'options' : OptionsSerializer(options).data
+            'options' : OptionsSerializer(options).data,
+            'images' : ProductImageSerializer(images,many=True).data
             }
             resps.append(resp)
         return Response(resps,status.HTTP_200_OK)
+    
+class SilentGetProducts(APIView):
+    permission_classes = [permissions.AllowAny]
+
+
+    def get(self,request,format=None):
+        resps = []
+        products = Product.objects.all().order_by('-quantity')
+        for product  in products:
+            supplier = product.provider
+            options = product.options_set.all()[0]
+            images = ProductImage.objects.filter(product=product)
+            resp = {
+            'fournisseur':ProviderSerializer(supplier).data,
+            'product':ProductSerializer(product).data,
+            'options' : OptionsSerializer(options).data,
+            'images' : ProductImageSerializer(images,many=True).data
+            }
+            resps.append(resp)
+        return Response(resps,status.HTTP_200_OK)
+    
+
+class ProductImageViewSet(ModelViewSet):
+
+    permission_classes = [permissions.AllowAny]
+    serializer_class = ProductImageSerializer
+    
+    def get_queryset(self):
+        pid = self.request.GET.get("pid",False)
+        if pid:
+            product = Product.objects.filter(id = int(pid)).first()
+            if product:
+                return ProductImage.objects.filter(product=product)
+            else:
+                return []
+        else:
+            return ProductImage.objects.all()
+
 
 
 class MvtStockViewSet(ModelViewSet):
