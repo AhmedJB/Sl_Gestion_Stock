@@ -266,6 +266,24 @@ class SilentGetProducts(APIView):
             resps.append(resp)
         return Response(resps,status.HTTP_200_OK)
     
+class SilentGetInfo(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def get(self,request,format="json"):
+        data = request.data
+        print(data)
+        
+        if  data:
+            products_obj= []
+            for id_ in data:
+                p= Product.objects.filter(p_id=id_).first()
+                if p:
+                    products_obj.append(p)
+                
+            return Response(ProductSerializer(products_obj,many=True).data,status.HTTP_200_OK)
+
+        else:
+            return Response([],status.HTTP_400_BAD_REQUEST)    
 
 class ProductImageViewSet(ModelViewSet):
 

@@ -30,6 +30,7 @@ urlpatterns = [
     path('modclient/<int:id>',ModifyClient.as_view()),
     path('product',AddProduct.as_view()),
     path('silentpd',SilentGetProducts.as_view()),
+    path('silentdetails',SilentGetInfo.as_view()),
     path('detailsadd/',AddDetails.as_view()),
     
     path('modproduct/<str:id>',ModifyProduct.as_view()),
