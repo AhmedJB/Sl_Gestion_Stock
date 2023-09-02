@@ -35,6 +35,8 @@ urlpatterns = [
     
     path('modproduct/<str:id>',ModifyProduct.as_view()),
     path('getproduct/<str:id>',OrderProduct.as_view()),
+    # get products via ids
+    path("silentProducts/getinfo",SilentGetProductsInfo.as_view()),
 
     # order urls 
     path('order',OrderV.as_view()),

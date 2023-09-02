@@ -56,6 +56,25 @@ class ProductImageSerializer(ModelSerializer):
         fields = "__all__"
 
 
+class ProductWithImageSerializer(ModelSerializer):
+
+    images = SerializerMethodField()
+
+    class Meta:
+        model = Product
+        fields = "__all__"
+    
+    def get_images(self,instance):
+        storedImages = ProductImage.objects.filter(product=instance)
+        if len(storedImages) > 0:
+            res = []
+            for storedImage in storedImages:
+                res.append(ProductImageSerializer(storedImage).data)
+            return res
+        else:
+            return []
+
+
 
 class OptionsSerializer(ModelSerializer):
     class Meta:

@@ -3,7 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
 from rest_framework import status,permissions
-from .serializer import ClientSerializer, InvoiceSerializer, OrderDetailsSerializer, OrderSerializer, RegisterSerializer,ProviderSerializer,ProductSerializer,OptionsSerializer,EcheanceSerializer, MvtStockSerializer, OptionCategoriesSerializer,ProductImageSerializer,GeneralOrderDetailsSerializer,TransportOptionsSerializer
+from .serializer import ClientSerializer, InvoiceSerializer, OrderDetailsSerializer, OrderSerializer, RegisterSerializer,ProviderSerializer,ProductSerializer,OptionsSerializer,EcheanceSerializer, MvtStockSerializer, OptionCategoriesSerializer,ProductImageSerializer,GeneralOrderDetailsSerializer,TransportOptionsSerializer,ProductWithImageSerializer
 from .models import *
 from gestionStock.settings import MEDIA_ROOT
 from django.core.files import File
@@ -265,6 +265,27 @@ class SilentGetProducts(APIView):
             }
             resps.append(resp)
         return Response(resps,status.HTTP_200_OK)
+
+class SilentGetProductsInfo(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self,request,format="json"):
+        data = request.data 
+        ids = data.get("ids",[])
+        print("received ids , " , ids)
+        if len(ids) > 0:
+            result = []
+            for id_ in ids:
+                p = Product.objects.filter(p_id=id_).first()
+                if p:
+                    result.append(ProductWithImageSerializer(p).data)
+
+                else:
+                    continue
+            print("full result ", result)
+            return Response(result,status.HTTP_200_OK)
+        else:
+            return Response([],status.HTTP_400_BAD_REQUEST)     
     
 class SilentGetInfo(APIView):
     permission_classes = [permissions.AllowAny]
