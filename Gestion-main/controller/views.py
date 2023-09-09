@@ -687,33 +687,40 @@ class AddDetails(APIView):
 
     def post(self,request):
         try:
-            data = request.data 
+            data = request.data
+            print(data) 
             order = Order.objects.filter(o_id=data['order']).first()
             if order:
                 data['order'] = order.id
                 print(data)
-                od_s = GeneralOrderDetailsSerializer(data=data)
-                if  od_s.is_valid():
-                    print("valid")
-                    od = od_s.save()
-                    product = Product.objects.filter(id=od.product_id)
-                    if len(product) == 0:
-                        print('product not found')
+                od = OrderDetails.objects.filter(order=order.id,product_id=data["product_id"]).first()
+                if not od:
+                    od_s = GeneralOrderDetailsSerializer(data=data)
+                    if  od_s.is_valid():
+                        print("valid")
+                        od = od_s.save()
                     else:
-                        p = product[0]
-                        diff = od.quantity - data['quantity']
-                        big_diff = p.quantity + diff
-                        if big_diff < 0:
-                            od.delete()
-                            return Response({},status.HTTP_500_INTERNAL_SERVER_ERROR)
-                        else:
-                            p.quantity = big_diff
-                            p.save()
-                        return Response({},status.HTTP_201_CREATED)
+                        print(od_s.errors)
+                        return Response({},status.HTTP_500_INTERNAL_SERVER_ERROR)
                 else:
-                    
-                    print(od_s.errors)
-                    return Response({},status.HTTP_500_INTERNAL_SERVER_ERROR)
+                    od.quantity += data['quantity']
+                    od.save()
+
+                product = Product.objects.filter(id=od.product_id)
+                if len(product) == 0:
+                    print('product not found')
+                else:
+                    p = product[0]
+                    diff =  data['quantity']
+                    big_diff = p.quantity - diff
+                    if big_diff < 0:
+                        od.delete()
+                        return Response({},status.HTTP_500_INTERNAL_SERVER_ERROR)
+                    else:
+                        p.quantity = big_diff
+                        p.save()
+                    return Response({},status.HTTP_201_CREATED)
+                
             else:
                     return Response({},status.HTTP_500_INTERNAL_SERVER_ERROR)
         except:

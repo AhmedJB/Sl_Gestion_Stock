@@ -5,7 +5,7 @@ import { faTrashAlt, faCheck } from "@fortawesome/free-solid-svg-icons";
 import { useToasts } from "react-toast-notifications";
 import { postReq } from "../../helper";
 
-function AdditionRow({ products, deleteFromList, orderID, updateOrders }) {
+function AdditionRow({ products, details, deleteFromList, orderID, updateOrders }) {
   const { addToast } = useToasts();
   const [quantity, setQuantity] = useState(0);
   const [price, setPrice] = useState(0);
@@ -54,8 +54,13 @@ function AdditionRow({ products, deleteFromList, orderID, updateOrders }) {
   }
 
   const handleSelectChange = (nv) => {
-    let filteredProduct = products.filter((e) => e.product.id === nv[0].id);
-    setSelectedProduct(filteredProduct[0]);
+    if (nv.length > 0) {
+      let filteredProduct = products.filter((e) => e.product.id === nv[0].id);
+      setSelectedProduct(filteredProduct[0]);
+    } else {
+
+    }
+
   };
 
   const validate = async () => {
@@ -69,16 +74,26 @@ function AdditionRow({ products, deleteFromList, orderID, updateOrders }) {
         prix: Number(price),
         prix_achat: selectedProduct.product.price_achat,
       };
-      let resp = await postReq("detailsadd/", body);
-      if (resp) {
-        await updateOrders();
-        deleteFromList();
+      let filt = details.filter(e => e.product_id === selectedProduct.product.id)
+      if (filt.length > 0) {
+        addToast("Produit existe deja", {
+          appearance: "warning",
+          autoDismiss: true
+        })
       } else {
-        addToast("Erreur", {
-          appearance: "error",
-          autoDismiss: true,
-        });
+        let resp = await postReq("detailsadd/", body);
+        if (resp) {
+          await updateOrders();
+          deleteFromList();
+        } else {
+          addToast("Erreur", {
+            appearance: "error",
+            autoDismiss: true,
+          });
+        }
       }
+
+
     } else {
       addToast("Select product", {
         appearance: "warning",
@@ -105,12 +120,12 @@ function AdditionRow({ products, deleteFromList, orderID, updateOrders }) {
           name="quantity"
           value={quantity}
           onChange={(v) => setQuantity(v.target.value)}
-          /* dataid={e.id}
-                      onChange={(r) => modifyDetails(r, e.id)}
-                      onFocus={clearField}
-                      onBlur={formatPrice}
-                      datavalue={e.prix}
-                      defaultValue={e.prix + " DH"} */
+        /* dataid={e.id}
+                    onChange={(r) => modifyDetails(r, e.id)}
+                    onFocus={clearField}
+                    onBlur={formatPrice}
+                    datavalue={e.prix}
+                    defaultValue={e.prix + " DH"} */
         ></input>
       </td>
       <td className="status">
@@ -119,12 +134,12 @@ function AdditionRow({ products, deleteFromList, orderID, updateOrders }) {
           name="prix"
           value={price}
           onChange={(v) => setPrice(v.target.value)}
-          /* dataid={e.id}
-                      onChange={(r) => modifyDetails(r, e.id)}
-                      onFocus={clearField}
-                      onBlur={formatPrice}
-                      datavalue={e.prix}
-                      defaultValue={e.prix + " DH"} */
+        /* dataid={e.id}
+                    onChange={(r) => modifyDetails(r, e.id)}
+                    onFocus={clearField}
+                    onBlur={formatPrice}
+                    datavalue={e.prix}
+                    defaultValue={e.prix + " DH"} */
         ></input>
       </td>
       <td

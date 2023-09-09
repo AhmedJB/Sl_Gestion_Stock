@@ -105,8 +105,8 @@ function HistoryV(props) {
     },
   ]);
 
-  const [openTransport,setOpenTransport] = useState(false)
-  
+  const [openTransport, setOpenTransport] = useState(false)
+
 
   const [filteredClient, setFilteredClient] = useState(null);
   const [filteredID, setFilteredID] = useState(null);
@@ -925,7 +925,7 @@ function HistoryV(props) {
                 <td className="bord">
                   {round(
                     DeletedOrder.order.total +
-                      (DeletedOrder.order.total * 20) / 100
+                    (DeletedOrder.order.total * 20) / 100
                   )}
                   DH
                 </td>
@@ -1094,7 +1094,7 @@ function HistoryV(props) {
                         <td className="bord">
                           {round(
                             SelectedOrder.order.total +
-                              (SelectedOrder.order.total * 20) / 100
+                            (SelectedOrder.order.total * 20) / 100
                           )}
                           DH
                         </td>
@@ -1414,6 +1414,7 @@ function HistoryV(props) {
               return (
                 <AdditionRow
                   products={products}
+                  details={Details.details}
                   deleteFromList={() => {
                     let temp = [...addedRows];
                     temp.splice(i, 1);
