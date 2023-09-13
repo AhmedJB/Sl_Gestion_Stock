@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-*14g1*53ab7p_5$7$e1dvkwcx_%tn1d$qkg6h64(5jagrv-aou
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['192.168.68.129','127.0.0.1','192.168.1.20']
+ALLOWED_HOSTS = ['192.168.68.129','127.0.0.1','192.168.1.20','localhost']
 
 CELERY_BROKER_URL = 'redis://localhost:6379'
 
@@ -117,7 +117,7 @@ DATABASES = {
         'NAME': 'Application',
         'USER': 'postgres',
         'PASSWORD': '123',
-        'HOST': 'localhost',
+        'HOST': 'localhost', host.docker.internal
         'PORT': '5432',
     }
 
