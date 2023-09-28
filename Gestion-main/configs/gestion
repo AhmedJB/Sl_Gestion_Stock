@@ -7,6 +7,10 @@ server {
         alias /usr/src/app/frontend/static/$1;
 
     }
+    location /media/ {
+        alias /usr/src/app/media/$1;
+
+    }
 
     location / {
         include proxy_params;
