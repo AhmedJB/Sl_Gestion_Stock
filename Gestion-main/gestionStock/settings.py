@@ -129,7 +129,7 @@ DATABASES = {
         'NAME': 'Application',
         'USER': 'postgres',
         'PASSWORD': '123',
-        'HOST': 'localhost', host.docker.internal
+        'HOST': 'database',
         'PORT': '5432',
     }
 
