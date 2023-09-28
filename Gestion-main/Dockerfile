@@ -23,8 +23,8 @@ COPY . /usr/src/app
 
 COPY ./configs/gestion /etc/nginx/sites-available
 RUN ln -s /etc/nginx/sites-available/gestion /etc/nginx/sites-enabled
-RUN service nginx restart
 
-EXPOSE 80
 
-CMD ["gunicorn" ,"--bind","0.0.0.0:8000","gestionStock.wsgi"]
+EXPOSE 80 443
+
+CMD bash -c "service nginx start && gunicorn --bind 0.0.0.0:8000 gestionStock.wsgi"

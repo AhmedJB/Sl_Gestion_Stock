@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-*14g1*53ab7p_5$7$e1dvkwcx_%tn1d$qkg6h64(5jagrv-aou
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['192.168.68.129','127.0.0.1','192.168.1.20','localhost']
+ALLOWED_HOSTS = ['192.168.68.129','127.0.0.1','192.168.1.20','localhost','apphost']
 
 CELERY_BROKER_URL = 'redis://localhost:6379'
 
@@ -45,12 +45,14 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'frontend',
-    'controller'
+    'controller',
+	"corsheaders"
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+	"corsheaders.middleware.CorsMiddleware",
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -90,6 +92,16 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION" : False,
 }
 
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:8000",
+    "http://localhost",
+	"http://127.0.0.1:3000",
+    "http://127.0.0.1:8000",
+    "http://127.0.0.1",
+]
+
 
 
 # Database
@@ -101,7 +113,7 @@ DATABASES = {
         'NAME': 'Application',
         'USER': 'postgres',
         'PASSWORD': '123',
-        'HOST': 'localhost',
+        'HOST': 'database',
         'PORT': '5432',
     }
 }
