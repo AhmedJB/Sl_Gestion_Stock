@@ -105,7 +105,6 @@ CORS_ALLOWED_ORIGINS = [
 
 
 
-
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
@@ -115,7 +114,7 @@ DATABASES = {
         'NAME': 'Application',
         'USER': 'postgres',
         'PASSWORD': '123',
-        'HOST': 'localhost',
+        'HOST': 'database',
         'PORT': '5432',
     }
 }
