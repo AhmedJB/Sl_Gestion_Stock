@@ -1,6 +1,6 @@
 server {
     listen 80;
-    server_name 127.0.0.1 85.31.236.214;
+    server_name 127.0.0.1 85.31.236.214 ;
 
     location = /favicon.ico { access_log off; log_not_found off; }
     location /static/ {
@@ -15,5 +15,7 @@ server {
     location / {
         include proxy_params;
         proxy_pass http://127.0.0.1:8000;
-    }
+	#proxy_set_header Host $host;
+        proxy_set_header Cross-Origin-Opener-Policy unsafe-none;
+ }
 }

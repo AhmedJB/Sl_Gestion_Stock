@@ -126,7 +126,7 @@ function Stock(props) {
   });
 
   const updateOptions = async () => {
-    let resp = await req("option");
+    let resp = await req("option/");
     if (resp) {
       setOptions(resp);
     }
@@ -207,8 +207,8 @@ function Stock(props) {
   const [similars, setSimilars] = useState([]);
 
   /* upload states */
-  const [uploadOpen,setUploadOpen] = useState(false);
-  const [selectedProductImage, setSelectedProductImage] =  useState(null);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [selectedProductImage, setSelectedProductImage] = useState(null);
   /*  */
 
   /* useEffect(() => {
@@ -230,16 +230,16 @@ function Stock(props) {
   }, [Products]);
 
 
-  useEffect(()  => {
-    if (selectedProductImage){
+  useEffect(() => {
+    if (selectedProductImage) {
       let prod = Products.filter(e => e.product.id === selectedProductImage.product.id)
-      if (prod.length > 0){
+      if (prod.length > 0) {
         setSelectedProductImage(prod[0])
-      }else{
+      } else {
         handleCloseUpload();
       }
     }
-  },[Products])
+  }, [Products])
 
   async function updateProducts() {
     let pResp = await req("product");
@@ -740,7 +740,7 @@ function Stock(props) {
 
 
 
-  const  handleOpenUpload = (e) => {
+  const handleOpenUpload = (e) => {
     setSelectedProductImage(e);
     setUploadOpen(true);
   }
@@ -805,7 +805,7 @@ function Stock(props) {
                       <Checkbox
                         checked={
                           printIDs.findIndex((r) => r[1] == e.product.p_id) !=
-                          -1
+                            -1
                             ? true
                             : false
                         }
@@ -966,10 +966,10 @@ function Stock(props) {
                   modifyData.options.metal == ""
                     ? []
                     : [
-                        Metal.find(
-                          (opt) => opt.value == modifyData.options.metal
-                        ),
-                      ]
+                      Metal.find(
+                        (opt) => opt.value == modifyData.options.metal
+                      ),
+                    ]
                 }
                 clas="CustomSelectMargin"
                 placeholder="Choisir un Metal"

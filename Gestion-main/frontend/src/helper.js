@@ -1,35 +1,35 @@
 
 
-
-const api = '/api/'
+const base_url = "http://85.31.236.214/gestionapp"
+const api = base_url + '/api/'
 var fileDownload = require('js-file-download');
 var axios = require('axios')
 
-function set_header(token = null){
+function set_header(token = null) {
     try {
         console.log(token);
-        if ( token == null){
+        if (token == null) {
             var obj = {
                 'Content-Type': 'application/json',
             }
         } else {
             var obj = {
                 'Content-Type': 'application/json',
-                'Authorization' : 'Bearer '+token
+                'Authorization': 'Bearer ' + token
             }
         }
-        
+
         console.log(obj);
         return obj
     } catch (error) {
         console.log(error);
-        
+
     }
-   
+
 }
 
 
-export async function get_token(username = null , password = null){
+export async function get_token(username = null, password = null) {
 
     let body = {
         username,
@@ -39,32 +39,32 @@ export async function get_token(username = null , password = null){
     let headers = set_header();
 
     let options = {
-        method : 'post',
-        body : JSON.stringify(body),
-        headers : headers
+        method: 'post',
+        body: JSON.stringify(body),
+        headers: headers
     }
 
-    
+
 
     let preResp = await fetch(api + 'token', options);
-    if (preResp.ok){
+    if (preResp.ok) {
         console.log('got token');
         var resp = await preResp.json();
         let access = resp.access;
         let refresh = resp.refresh;
-        sessionStorage.setItem('refreshToken',refresh);
-        sessionStorage.setItem('accessToken',access);
+        sessionStorage.setItem('refreshToken', refresh);
+        sessionStorage.setItem('accessToken', access);
         resp = await isLogged();
         return resp;
-    }else{
+    } else {
         return false;
     }
-    
-    
+
+
 }
 
 
-export async function register(username = null, email = null , password = null){
+export async function register(username = null, email = null, password = null) {
 
     let body = {
         email,
@@ -75,48 +75,48 @@ export async function register(username = null, email = null , password = null){
     let headers = set_header();
 
     let options = {
-        method : 'post',
-        body : JSON.stringify(body),
-        headers : headers
+        method: 'post',
+        body: JSON.stringify(body),
+        headers: headers
     }
 
-    
+
 
     let preResp = await fetch(api + 'register', options);
-    
+
     if (preResp.ok) {
-        let nextresp = await get_token(username,password);
+        let nextresp = await get_token(username, password);
         return nextresp;
 
-    }else{
+    } else {
         return false
     }
-    
+
 
 }
 
 
 
-export async function refreshToken(){
+export async function refreshToken() {
     let refresh = sessionStorage.getItem('refreshToken');
     let headers = set_header();
     let options = {
-        method : 'post',
-        body : JSON.stringify({
+        method: 'post',
+        body: JSON.stringify({
             refresh
         }),
-        headers : headers
+        headers: headers
 
     }
 
-    let preResp = await fetch(api + 'token/refresh' , options);
-    if (preResp.ok){
+    let preResp = await fetch(api + 'token/refresh', options);
+    if (preResp.ok) {
         let resp = await preResp.json();
         let access = resp.access;
-        sessionStorage.setItem('accessToken',access);
+        sessionStorage.setItem('accessToken', access);
         return true;
 
-    }else{
+    } else {
         console.log('need to login');
         return false;
     }
@@ -124,35 +124,35 @@ export async function refreshToken(){
 
 }
 
-export async function set_vidiq_account(url,username = null , password = null){
+export async function set_vidiq_account(url, username = null, password = null) {
     let access = sessionStorage.getItem('accessToken');
     let headers = set_header(access);
 
     let body = {
-        email : username,
-        password : password
+        email: username,
+        password: password
     }
 
-    let options  = {
-        method : 'post',
-        body : JSON.stringify(body),
-        headers : headers
+    let options = {
+        method: 'post',
+        body: JSON.stringify(body),
+        headers: headers
     }
 
-    let preResp = await fetch(api + url,options);
-    if (preResp.ok){
+    let preResp = await fetch(api + url, options);
+    if (preResp.ok) {
         let resp = await preResp.json();
         console.log(resp);
         return resp;
-    }else if (preResp.status == 401){
+    } else if (preResp.status == 401) {
         let dec = await refreshToken();
-        if (dec){
-            set_vidiq_account(url,username,password);
-        }else{
-            
+        if (dec) {
+            set_vidiq_account(url, username, password);
+        } else {
+
             return false;
         }
-    }else {
+    } else {
         console.log('other errors');
         return false;
     }
@@ -160,7 +160,7 @@ export async function set_vidiq_account(url,username = null , password = null){
 }
 
 
-export async function postReq(url,body){
+export async function postReq(url, body) {
     let access = sessionStorage.getItem('accessToken');
     let headers = set_header(access);
 
@@ -169,26 +169,26 @@ export async function postReq(url,body){
         keywords
     } */
 
-    let options  = {
-        method : 'post',
-        body : JSON.stringify(body),
-        headers : headers
+    let options = {
+        method: 'post',
+        body: JSON.stringify(body),
+        headers: headers
     }
 
-    let preResp = await fetch(api + url,options);
-    if (preResp.ok){
+    let preResp = await fetch(api + url, options);
+    if (preResp.ok) {
         let resp = await preResp.json();
         console.log(resp);
         return resp;
-    }else if (preResp.status == 401){
+    } else if (preResp.status == 401) {
         let dec = await refreshToken();
-        if (dec){
-            return postReq(url,body);
-        }else{
-            
+        if (dec) {
+            return postReq(url, body);
+        } else {
+
             return false;
         }
-    }else {
+    } else {
         console.log('other errors');
         return false;
     }
@@ -196,30 +196,30 @@ export async function postReq(url,body){
 }
 
 
-export async function post_download_file(url,name,body){
+export async function post_download_file(url, name, body) {
     let access = sessionStorage.getItem('accessToken');
     let headers = set_header(access);
 
-    let options  = {
-        method : 'post',
-        body : JSON.stringify(body),
-        headers : headers
+    let options = {
+        method: 'post',
+        body: JSON.stringify(body),
+        headers: headers
     }
 
-    let preResp = await fetch(api + url,options);
-    if (preResp.ok){
+    let preResp = await fetch(api + url, options);
+    if (preResp.ok) {
         let resp = await preResp.blob();
-        fileDownload(resp,name);
+        fileDownload(resp, name);
         return true;
-    }else if (preResp.status == 401){
+    } else if (preResp.status == 401) {
         let dec = await refreshToken();
-        if (dec){
+        if (dec) {
             post_download_file(url);
-        }else{
-            
+        } else {
+
             return false;
         }
-    }else {
+    } else {
         console.log('other errors');
         return false;
     }
@@ -228,29 +228,29 @@ export async function post_download_file(url,name,body){
 }
 
 
-export async function download_file(url,name){
+export async function download_file(url, name) {
     let access = sessionStorage.getItem('accessToken');
     let headers = set_header(access);
 
-    let options  = {
-        method : 'get',
-        headers : headers
+    let options = {
+        method: 'get',
+        headers: headers
     }
 
-    let preResp = await fetch(api + url,options);
-    if (preResp.ok){
+    let preResp = await fetch(api + url, options);
+    if (preResp.ok) {
         let resp = await preResp.blob();
-        fileDownload(resp,name);
+        fileDownload(resp, name);
         return true;
-    }else if (preResp.status == 401){
+    } else if (preResp.status == 401) {
         let dec = await refreshToken();
-        if (dec){
+        if (dec) {
             download_file(url);
-        }else{
-            
+        } else {
+
             return false;
         }
-    }else {
+    } else {
         console.log('other errors');
         return false;
     }
@@ -261,28 +261,28 @@ export async function download_file(url,name){
 
 
 
-export async function req(url){
+export async function req(url) {
     let access = sessionStorage.getItem('accessToken');
     let headers = set_header(access);
 
-    let options  = {
-        method : 'get',
-        headers : headers
+    let options = {
+        method: 'get',
+        headers: headers
     }
 
-    let preResp = await fetch(api + url,options);
-    if (preResp.ok){
+    let preResp = await fetch(api + url, options);
+    if (preResp.ok) {
         let resp = await preResp.json();
         return resp;
-    }else if (preResp.status == 401){
+    } else if (preResp.status == 401) {
         let dec = await refreshToken();
-        if (dec){
+        if (dec) {
             return req(url);
-        }else{
-            
+        } else {
+
             return false;
         }
-    }else {
+    } else {
         console.log('other errors');
         return false;
     }
@@ -291,29 +291,29 @@ export async function req(url){
 }
 
 
-export async function req_body(url,body){
+export async function req_body(url, body) {
     let access = sessionStorage.getItem('accessToken');
     let headers = set_header(access);
 
-    let options  = {
-        method : 'get',
-        headers : headers,
+    let options = {
+        method: 'get',
+        headers: headers,
         body
     }
 
-    let preResp = await fetch(api + url,options);
-    if (preResp.ok){
+    let preResp = await fetch(api + url, options);
+    if (preResp.ok) {
         let resp = await preResp.json();
         return resp;
-    }else if (preResp.status == 401){
+    } else if (preResp.status == 401) {
         let dec = await refreshToken();
-        if (dec){
+        if (dec) {
             return req(url);
-        }else{
-            
+        } else {
+
             return false;
         }
-    }else {
+    } else {
         console.log('other errors');
         return false;
     }
@@ -322,7 +322,7 @@ export async function req_body(url,body){
 }
 
 
-export async function addImage(product = null,  files = null) {
+export async function addImage(product = null, files = null) {
     let form_data = new FormData();
     let access = sessionStorage.getItem('accessToken');
     //access =  "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNjQ4OTc3OTkwLCJqdGkiOiIyY2EyY2NjMjFmMjQ0YjQyYTc3MjgzYjAzZGM2MTdhMSIsInVzZXJfaWQiOjJ9.uGyjMDKwWTMowoBgxNLiDbfijFcwutbKBkLNrXlvnTA"
@@ -395,13 +395,13 @@ export async function deleteReq(url) {
 
     let preResp = await fetch(api + url, options);
     if (preResp.ok) {
-        try{
+        try {
             let resp = await preResp.json();
-        return resp;
-        }catch {
+            return resp;
+        } catch {
             return true;
         }
-        
+
     } else if (preResp.status == 401) {
         return false;
     } else {
@@ -414,13 +414,13 @@ export async function deleteReq(url) {
 
 
 
-export async function isLogged(){
+export async function isLogged() {
     let resp = await req('session');
     return resp;
 }
 
 
-export function logout(setUser,User) {
+export function logout(setUser, User) {
     let obj = { ...User };
     obj.logged = false;
     obj.username = null;
@@ -428,4 +428,4 @@ export function logout(setUser,User) {
     sessionStorage.removeItem("accessToken");
     sessionStorage.removeItem("refreshToken");
     setUser(obj);
-  }
+}
