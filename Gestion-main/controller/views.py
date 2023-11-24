@@ -705,6 +705,10 @@ class AddDetails(APIView):
                 else:
                     od.quantity += data['quantity']
                     od.save()
+                
+                order.total +=  data['quantity'] * data['prix']
+                order.save()
+
 
                 product = Product.objects.filter(id=od.product_id)
                 if len(product) == 0:
