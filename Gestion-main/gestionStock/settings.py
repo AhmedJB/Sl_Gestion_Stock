@@ -26,7 +26,8 @@ SECRET_KEY = 'django-insecure-*14g1*53ab7p_5$7$e1dvkwcx_%tn1d$qkg6h64(5jagrv-aou
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['192.168.68.129','127.0.0.1','192.168.1.20','localhost','apphost',"85.31.236.214"]
+ALLOWED_HOSTS = ['192.168.68.129', '127.0.0.1',
+                 '192.168.1.20', 'localhost', 'apphost', "85.31.236.214"]
 
 CELERY_BROKER_URL = 'redis://localhost:6379'
 
@@ -46,13 +47,13 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'frontend',
     'controller',
-	"corsheaders"
+    "corsheaders"
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-	"corsheaders.middleware.CorsMiddleware",
+    "corsheaders.middleware.CorsMiddleware",
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -81,15 +82,15 @@ TEMPLATES = [
 WSGI_APPLICATION = 'gestionStock.wsgi.application'
 
 REST_FRAMEWORK = {
-    
+
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     )
-    
+
 }
 
 SIMPLE_JWT = {
-    "BLACKLIST_AFTER_ROTATION" : False,
+    "BLACKLIST_AFTER_ROTATION": False,
 }
 
 CORS_ALLOW_ALL_ORIGINS = True
@@ -97,12 +98,11 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:8000",
     "http://localhost",
-	"http://127.0.0.1:3000",
+    "http://127.0.0.1:3000",
     "http://127.0.0.1:8000",
     "http://127.0.0.1",
-	"http://85.31.236.214"
+    "http://85.31.236.214"
 ]
-
 
 
 # Database
@@ -110,12 +110,8 @@ CORS_ALLOWED_ORIGINS = [
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.postgresql_psycopg2',
-        'NAME': 'Application',
-        'USER': 'postgres',
-        'PASSWORD': '123',
-        'HOST': 'database',
-        'PORT': '5432',
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 
@@ -137,7 +133,6 @@ DATABASES = {
 
 
  """
-
 
 
 # Password validation
@@ -177,7 +172,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
 
 STATIC_URL = '/static/'
-#STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+# STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 STATICFILES_DIRS = [
     BASE_DIR / "static",
 ]
