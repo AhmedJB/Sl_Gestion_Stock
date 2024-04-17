@@ -1,0 +1,47 @@
+[
+    {
+        "fournisseur": "Chine",
+        "product": {
+            "name": "Covere UNO Fiat 2",
+            "ptype": "Radiataeur Clime",
+            "price_vente": "230",
+            "price_achat": "230",
+            "quantity": "43",
+            "place": ""
+        },
+        "options": {
+            "metal": "",
+            "type": "Plat"
+        }
+    },
+    {
+        "fournisseur": "Chine",
+        "product": {
+            "name": "Covere Dacia Stepway 2",
+            "ptype": "Radiataeur Chauffage",
+            "price_vente": "440",
+            "price_achat": "440",
+            "quantity": "11",
+            "place": ""
+        },
+        "options": {
+            "metal": "",
+            "type": "2r"
+        }
+    },
+    {
+        "fournisseur": "Chine",
+        "product": {
+            "name": "Covere Fiat Polo 2",
+            "ptype": "Radiataeur Eau",
+            "price_vente": "240",
+            "price_achat": "240",
+            "quantity": "2",
+            "place": ""
+        },
+        "options": {
+            "metal": "",
+            "type": "3r"
+        }
+    }
+]
