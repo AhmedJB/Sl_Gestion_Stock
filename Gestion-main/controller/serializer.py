@@ -75,6 +75,17 @@ class ProductWithImageSerializer(ModelSerializer):
             return []
 
 
+class ProductWithChangeSerialize(ModelSerializer):
+    changes = SerializerMethodField()
+
+    class Meta:
+        model = Product
+        fields = "__all__"
+    
+    def  get_changes(self,instance):
+        mvts  = MvtStock.objects.filter(product=instance).order_by("-date")
+        return MvtStockSerializer(mvts,many=True).data
+
 
 class OptionsSerializer(ModelSerializer):
     class Meta:

@@ -25,6 +25,7 @@ urlpatterns = [
     path('session',TestSession.as_view()),
     path('provider',AddProvider.as_view()),
     path('modprovider/<int:id>',ModifyProvider.as_view()),
+    path('provider-products',getProviderProducts.as_view()),
     path('client',AddClient.as_view()),
     path('getclients',OpenClient.as_view()),
     path('modclient/<int:id>',ModifyClient.as_view()),

@@ -3,7 +3,7 @@ from rest_framework.views import APIView
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.response import Response
 from rest_framework import status,permissions
-from .serializer import ClientSerializer, InvoiceSerializer, OrderDetailsSerializer, OrderSerializer, RegisterSerializer,ProviderSerializer,ProductSerializer,OptionsSerializer,EcheanceSerializer, MvtStockSerializer, OptionCategoriesSerializer,ProductImageSerializer,GeneralOrderDetailsSerializer,TransportOptionsSerializer,ProductWithImageSerializer
+from .serializer import ClientSerializer, InvoiceSerializer, OrderDetailsSerializer, OrderSerializer, RegisterSerializer,ProviderSerializer,ProductSerializer,OptionsSerializer,EcheanceSerializer, MvtStockSerializer, OptionCategoriesSerializer,ProductImageSerializer,GeneralOrderDetailsSerializer,TransportOptionsSerializer,ProductWithImageSerializer,ProductWithChangeSerialize
 from .models import *
 from gestionStock.settings import MEDIA_ROOT
 from django.core.files import File
@@ -104,7 +104,25 @@ class AddProvider(APIView):
         return Response(s,status.HTTP_200_OK)
 
 
+class getProviderProducts(APIView):
+    permission_classes = [permissions.IsAuthenticated]
 
+    def get(self,request):
+        provider_id  = request.query_params.get('fid',None)
+        if provider_id:
+            prov = Provider.objects.filter(id=provider_id).first()
+            if prov:
+                produdcts = Product.objects.filter(provider = prov)
+                data = ProductWithChangeSerialize(produdcts,many=True).data
+                return Response(data,status=status.HTTP_200_OK)
+                
+            else:
+                print("no prov")
+                return Response([],status=status.HTTP_400_BAD_REQUEST)
+
+        else:
+            
+            return Response([],status=status.HTTP_400_BAD_REQUEST)
 
 class ModifyProvider(APIView):
     permission_classes = [permissions.IsAuthenticated]
