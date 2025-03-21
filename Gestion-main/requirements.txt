@@ -83,3 +83,4 @@ vine==5.0.0
 wcwidth==0.2.5
 widgetsnbextension==4.0.3
 psycopg[binary]
+psycopg2-binary
