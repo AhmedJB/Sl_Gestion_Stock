@@ -19,6 +19,7 @@ cycler==0.11.0
 debugpy==1.6.3
 decorator==5.1.1
 Django==4.1.1
+django-cors-headers==4.3.0
 djangorestframework==3.14.0
 djangorestframework-simplejwt==5.2.1
 entrypoints==0.4
@@ -81,4 +82,4 @@ urllib3==1.26.12
 vine==5.0.0
 wcwidth==0.2.5
 widgetsnbextension==4.0.3
-django-cors-headers
+psycopg[binary]
