@@ -1006,7 +1006,7 @@ class GetOrderSalesData(APIView):
         result = {}
         # Initialize a dictionary with all months set to zero
         filled_data = {month: {"total_sales": 0, "total_quantity": 0} for month in all_months}
-        result[product_name] = filled_data
+        #result[product_name] = filled_data
         for product_name, monthly_data in sales_data.items():
             filled_data = {month: {"total_sales": 0, "total_quantity": 0} for month in all_months}
             # Update with actual data where available
