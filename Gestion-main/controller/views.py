@@ -14,6 +14,9 @@ import datetime as d
 from datetime import datetime, date ,timedelta
 from urllib.parse import unquote
 from dateutil.relativedelta  import relativedelta
+from collections import defaultdict
+from django.utils  import timezone
+from django.db.models import Sum
 
 # Create your views here.
 
@@ -746,6 +749,7 @@ class AddDetails(APIView):
             else:
                     return Response({},status.HTTP_500_INTERNAL_SERVER_ERROR)
         except:
+            # ??
             od.delete()
             return Response({},status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -945,5 +949,89 @@ class GetStable(APIView):
         return Response(resp,status.HTTP_200_OK)
 
 
+class GetOrderSalesData(APIView):
 
 
+    def get(self,request,format=None):
+        # Define the current date
+        today = datetime(2023, 12, 24)  # Replace with timezone.now() in production
+
+        # Generate a list of all months in the last 12 months
+        all_months = []
+        current_month = today.replace(day=1)  # Start from the first day of the current month
+        for _ in range(12):
+            all_months.append(current_month.strftime("%m/%Y"))  # Add the month/year to the list
+            # Move to the previous month
+            if current_month.month == 1:
+                current_month = current_month.replace(year=current_month.year - 1, month=12)
+            else:
+                current_month = current_month.replace(month=current_month.month - 1)
+        all_months.reverse()  # Ensure the months are in chronological order
+
+        # Calculate the start of the current month
+        start_of_current_month = today.replace(day=1)
+
+        # Use the first month in `all_months` to define `twelve_months_ago`
+        twelve_months_ago = datetime.strptime(all_months[0], "%m/%Y").replace(day=1)
+
+        # Query OrderDetails from the last 12 months
+        orders_last_12_months = OrderDetails.objects.filter(
+            order__date__gte=twelve_months_ago,order__date__lte=today
+        ).select_related('order')
+        print(orders_last_12_months)
+
+        # Prepare a nested dictionary to store results
+        sales_data = defaultdict(lambda: defaultdict(lambda: {"total_sales": 0, "total_quantity": 0}))
+
+        # Process each OrderDetail record
+        for detail in orders_last_12_months:
+            # Extract the month/year from the order date
+            order_date = detail.order.date
+            month_year = order_date.strftime("%m/%Y")  # Format: "MM/YYYY"
+
+            # Calculate the total sales and total quantity for this product in this month
+            total_sales = detail.prix * detail.quantity
+            total_quantity = detail.quantity
+
+            # Use product_name as the key
+            product_name = detail.product_name
+
+            # Update the nested dictionary
+            sales_data[product_name][month_year]["total_sales"] += total_sales
+            sales_data[product_name][month_year]["total_quantity"] += total_quantity
+
+        
+
+        # Fill in missing months with zeros
+        result = {}
+        # Initialize a dictionary with all months set to zero
+        filled_data = {month: {"total_sales": 0, "total_quantity": 0} for month in all_months}
+        result[product_name] = filled_data
+        for product_name, monthly_data in sales_data.items():
+            filled_data = {month: {"total_sales": 0, "total_quantity": 0} for month in all_months}
+            # Update with actual data where available
+            for month, data in monthly_data.items():
+                filled_data[month] = data
+            result[product_name] = filled_data
+
+        return Response(result,status.HTTP_200_OK)
+
+class GetTopProducts(APIView):
+
+    def get(self,request,format=None):
+        # Define the current date
+        today = datetime(2023, 12, 24)  # Replace with timezone.now() in production
+        twelve_months_ago = today - timedelta(days=365)
+
+        # Query the top 5 products sold in the last 12 months
+        top_products = (
+            OrderDetails.objects.filter(order__date__gte=twelve_months_ago)
+            .values('product_name')  # Group by product_name
+            .annotate(total_quantity=Sum('quantity'))  # Sum the quantity for each product
+            .order_by('-total_quantity')  # Sort by total_quantity in descending order
+            .values('product_name', 'total_quantity')[:5]  # Limit to top 5
+        )
+
+        # Convert the queryset to a list of dictionaries
+        result = list(top_products)
+        return Response(result,status.HTTP_200_OK)

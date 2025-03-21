@@ -1,0 +1,43 @@
+server {
+    listen 8000;
+    server_name 85.31.236.214;
+
+	client_max_body_size 100M;
+set $my_host $http_host;
+        if ($http_host = "85.31.236.214") {
+                set $my_host "127.0.0.1";
+        }
+
+   location /static/ {
+        include proxy_params;
+        proxy_pass http://127.0.0.1:5000;
+	#proxy_set_header Host $my_host;
+        #proxy_set_header Cross-Origin-Opener-Policy same-origin;
+    }
+
+    location /media/ {
+        include proxy_params;
+        proxy_pass http://127.0.0.1:8001;
+	#proxy_set_header Host $my_host;
+        #proxy_set_header Cross-Origin-Opener-Policy same-origin;
+    }
+
+    location /appfront/ {
+        include proxy_params;
+        proxy_pass http://127.0.0.1:5000/;
+        #proxy_set_header Host $my_host;
+        #proxy_set_header Cross-Origin-Opener-Policy unsafe-none;
+    }
+   
+
+    location /gestionapp/ {
+        include proxy_params;
+        proxy_pass http://127.0.0.1:8001/;
+	#proxy_set_header Host $my_host;
+	#proxy_set_header Cross-Origin-Opener-Policy unsafe-none;
+    }
+    location / {
+        include proxy_params;
+        proxy_pass http://127.0.0.1:5000;
+    }
+}

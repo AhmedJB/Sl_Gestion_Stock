@@ -60,6 +60,8 @@ urlpatterns = [
     path('download/<str:id>',Download.as_view()),
     ## analytics views 
     path('getstable',GetStable.as_view()),
+    path('getsalestats',GetOrderSalesData.as_view()),
+    path('gettop5',GetTopProducts.as_view()),
     path('getranks',GetTop.as_view()),
     path('getproviderdata/<int:id>',GetProviderData.as_view()),
     path('getclientdata/<int:id>',GetClientData.as_view()),
