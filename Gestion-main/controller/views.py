@@ -954,7 +954,7 @@ class GetOrderSalesData(APIView):
 
     def get(self,request,format=None):
         # Define the current date
-        today = datetime(2023, 12, 24)  # Replace with timezone.now() in production
+        today = timezone.now()  # Replace with timezone.now() in production
 
         # Generate a list of all months in the last 12 months
         all_months = []
@@ -1020,7 +1020,7 @@ class GetTopProducts(APIView):
 
     def get(self,request,format=None):
         # Define the current date
-        today = datetime(2023, 12, 24)  # Replace with timezone.now() in production
+        today = timezone.now()  # Replace with timezone.now() in production
         twelve_months_ago = today - timedelta(days=365)
 
         # Query the top 5 products sold in the last 12 months
