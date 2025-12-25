@@ -1,0 +1,40 @@
+
+class ProductPriceEvolution(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self,request,format=None):
+        """
+        Returns the price evolution of a specific product for a specific client.
+        Payload: { "client_id": int, "product_id": int }
+        """
+        client_id = request.data.get('client_id')
+        product_id = request.data.get('product_id')
+
+        if not client_id or not product_id:
+            return Response({'error': 'client_id and product_id are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            client_id = int(client_id)
+            product_id = int(product_id)
+        except ValueError:
+            return Response({'error': 'IDs must be integers'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Fetch orders for this client, ordered by date
+        orders = Order.objects.filter(client_id=client_id).order_by('date')
+        
+        evolution = []
+        for order in orders:
+            # Find details for this specific product in the order
+            # Note: product_id in OrderDetails is simply an integer field
+            details = OrderDetails.objects.filter(order=order, product_id=product_id)
+            
+            for detail in details:
+                evolution.append({
+                    'order_id': order.o_id,
+                    'date': order.date,
+                    'quantity': detail.quantity,
+                    'price_sold': detail.prix,
+                    'price_bought': detail.prix_achat,  # Including buying price for reference if needed
+                })
+
+        return Response(evolution, status=status.HTTP_200_OK)

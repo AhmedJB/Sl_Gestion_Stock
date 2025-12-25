@@ -65,5 +65,6 @@ urlpatterns = [
     path('getranks',GetTop.as_view()),
     path('getproviderdata/<int:id>',GetProviderData.as_view()),
     path('getclientdata/<int:id>',GetClientData.as_view()),
+    path('price-evolution',ProductPriceEvolution.as_view()),
 
 ]

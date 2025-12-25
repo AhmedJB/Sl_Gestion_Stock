@@ -647,14 +647,49 @@ class ModOrder(APIView):
             od.prix = d['prix']
             od.save()
         print(total)
-        c = (total - data['details']['paid']  + data['ret']) - (o.total - o.paid)
-        print(c)
-        client = o.client
-        if (client.credit + c == 0):
-            client.credit = 0
+        print(total)
+        
+        old_debt = o.total - o.paid
+        new_debt = total - (data['details'].get('paid', 0) - data.get('ret', 0)) # new_total - new_paid
+        
+        # Check if client has changed
+        new_client_id = data['details'].get('client_id')
+        current_client = o.client
+        
+        if new_client_id and int(new_client_id) != current_client.id:
+            # Client has changed
+            try:
+                new_client = Client.objects.get(id=int(new_client_id))
+                
+                # 1. Revert Old Client Debt
+                # We subtract the OLD debt from the OLD client's credit (assuming credit = debt balance)
+                current_client.credit -= old_debt
+                if current_client.credit < 0: current_client.credit = 0 # Safety floor if needed
+                current_client.save()
+                
+                # 2. Apply New Client Debt
+                new_client.credit += new_debt
+                new_client.save()
+                
+                # 3. Update Order Client
+                o.client = new_client
+                
+            except Client.DoesNotExist:
+                 return Response({'error': True, 'msg': 'New Client not found'}, status=status.HTTP_400_BAD_REQUEST)
         else:
-            client.credit += c
-        client.save()
+            # Same Client - Apply Delta
+            # diff = new_debt - old_debt
+            # If diff is positive (debt increased), we add to credit.
+            # If diff is negative (debt decreased), we subtract (add negative).
+            diff = new_debt - old_debt
+            
+            c = current_client.credit + diff
+            if c < 0:
+                current_client.credit = 0
+            else:
+                current_client.credit = c
+            current_client.save()
+
         o.total = total
         o.paid = data['details']['paid']  - data['ret']
         o.mode = data['details']['mode']
@@ -803,6 +838,46 @@ class GetClientData(APIView):
             return Response(resp,status.HTTP_200_OK)
         else:
             return Response(False,status.HTTP_400_BAD_REQUEST)
+
+class ProductPriceEvolution(APIView):
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self,request,format=None):
+        """
+        Returns the price evolution of a specific product for a specific client.
+        Payload: { "client_id": int, "product_id": int }
+        """
+        client_id = request.data.get('client_id')
+        product_id = request.data.get('product_id')
+
+        if not client_id or not product_id:
+            return Response({'error': 'client_id and product_id are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            client_id = int(client_id)
+            product_id = int(product_id)
+        except ValueError:
+            return Response({'error': 'IDs must be integers'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Fetch orders for this client, ordered by date
+        orders = Order.objects.filter(client_id=client_id).order_by('-date')
+        
+        evolution = []
+        for order in orders:
+            # Find details for this specific product in the order
+            # Note: product_id in OrderDetails is simply an integer field
+            details = OrderDetails.objects.filter(order=order, product_id=product_id)
+            
+            for detail in details:
+                evolution.append({
+                    'order_id': order.o_id,
+                    'date': order.date,
+                    'quantity': detail.quantity,
+                    'price_sold': detail.prix,
+                    'price_bought': detail.prix_achat,
+                })
+
+        return Response(evolution, status=status.HTTP_200_OK)
 
 
 class GetProviderData(APIView):
