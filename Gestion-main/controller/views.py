@@ -30,12 +30,9 @@ class Register(APIView):
         print(data)
         s = RegisterSerializer(data=data)
         if s.is_valid():
-            print('valid')
             resp = s.save()
-            print(resp)
             return Response(resp)
         else:
-            print('not valid')
             return Response({'result':'not created'})
 
 
@@ -45,7 +42,6 @@ class TestSession(APIView):
 
     def get(self,request,format=None):
         user = request.user
-        print(f'User is {user}')
         u = RegisterSerializer(user).data
         return Response(u)
 
@@ -75,8 +71,6 @@ class postDownload(APIView):
 
     def post(self,request,format=None):
         data = request.data 
-        print('here')
-        print(data)
         if len(data) > 0:
             g = Generator()
             g.genPdf(data)
@@ -236,8 +230,7 @@ class AddProduct(APIView):
 
         while True:
             idd = format_number(random.randrange(0,9999999999999))
-            orders = Product.objects.filter(p_id=idd)
-            if len(orders) == 0:
+            if not Product.objects.filter(p_id=idd).exists():
                 break
         
         product.p_id = idd
@@ -506,26 +499,39 @@ class OrderV(APIView):
 
         resp['client'] = ClientSerializer(client).data
         order = Order.objects.create(client = client,total = data['sub_options']['total'],paid=data['sub_options']['paid'],mode=data['sub_options']['modePayment'])
+        # Use a more robust ID system: YYMMDD + 4 random digits
+        prefix = timezone.now().strftime("%y%m%d")
         while True:
-            idd = format_fact(random.randrange(0,99999))
-            orders = Order.objects.filter(o_id=idd)
-            if len(orders) == 0:
+            suffix = str(random.randrange(1000, 9999))
+            idd = f"{prefix}{suffix}"
+            if not Order.objects.filter(o_id=idd).exists():
                 break
         order.o_id = idd
         resp['order'] = OrderSerializer(order).data
         order.save()
         temp = []
+        # Prepare all products in one go to avoid N+1 queries in the loop
+        product_ids = [prod['id'] for prod in data['products']]
+        products_map = {p.id: p for p in Product.objects.filter(id__in=product_ids).select_related('provider')}
+        
         for prod in data['products']:
-            od = OrderDetails.objects.create(order=order, product_name = prod['name'], quantity = prod['quantity'],prix =prod['price_vente'],prix_achat = prod['price_achat'])
+            p = products_map.get(prod['id'])
+            if not p:
+                continue
+                
+            od = OrderDetails.objects.create(
+                order=order, 
+                product_name=prod['name'], 
+                quantity=prod['quantity'],
+                prix=prod['price_vente'],
+                prix_achat=prod['price_achat'],
+                provider_id=p.provider.id,
+                product_id=p.id
+            )
             
-            p = Product.objects.filter(id=prod['id'])[0]
-            od.provider_id = p.provider.id 
-            od.product_id = p.id 
-            od.save()
             p.quantity -= prod['quantity']
             p.save()
             temp.append(OrderDetailsSerializer(od).data)
-            pass
 
         print(data)
         print(resp)
@@ -836,7 +842,10 @@ class AddDetails(APIView):
 
 def convertdatetime(n):
     m = datetime.min.time()
-    return datetime.combine(n,m)
+    dt = datetime.combine(n, m)
+    if timezone.is_aware(n):
+        return timezone.make_aware(dt, timezone.get_current_timezone())
+    return dt
 
 def add_day_date(dt,interval):
     return convertdatetime(dt+ relativedelta(days=interval)) 

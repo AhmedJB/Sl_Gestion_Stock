@@ -43,7 +43,7 @@ class Client(models.Model):
 
 class Product(models.Model):
     provider = models.ForeignKey(Provider , on_delete=models.CASCADE)
-    p_id = models.CharField(max_length=255,default='')
+    p_id = models.CharField(max_length=255,default='', db_index=True)
     name = models.CharField(max_length=255,default='')
     ptype = models.CharField(max_length=255,default='')
     #place = models.IntegerField(default=0)
@@ -124,7 +124,7 @@ class Order(models.Model):
     paid = models.FloatField(default=0)
     mode = models.IntegerField(default=0)
     transport = models.CharField(default="Domicile",max_length=255)
-    o_id = models.CharField(max_length=255,default="")
+    o_id = models.CharField(max_length=255,default="", db_index=True)
     date = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
