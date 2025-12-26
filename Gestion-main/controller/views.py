@@ -16,7 +16,9 @@ from urllib.parse import unquote
 from dateutil.relativedelta  import relativedelta
 from collections import defaultdict
 from django.utils  import timezone
-from django.db.models import Sum
+from django.db.models import Sum, F
+from django.db import transaction
+from django.core.paginator import Paginator
 
 # Create your views here.
 
@@ -250,22 +252,39 @@ class AddProduct(APIView):
         }
         return Response(resp,status.HTTP_200_OK)
 
-    
     def get(self,request,format=None):
+        page_number = request.query_params.get('page', 1)
+        page_size = request.query_params.get('page_size', 20)
+        
+        products_qs = Product.objects.all().order_by('-quantity').select_related('provider').prefetch_related('options_set', 'productimage_set')
+        paginator = Paginator(products_qs, page_size)
+        
+        try:
+            page_obj = paginator.get_page(page_number)
+        except Exception:
+            return Response({"error": "Invalid page"}, status=status.HTTP_400_BAD_REQUEST)
+
         resps = []
-        products = Product.objects.all().order_by('-quantity')
-        for product  in products:
+        for product in page_obj:
             supplier = product.provider
-            options = product.options_set.all()[0]
-            images = ProductImage.objects.filter(product=product)
+            # Use pre-fetched options and images
+            options = product.options_set.all()[0] if product.options_set.exists() else None
+            images = product.productimage_set.all()
+            
             resp = {
-            'fournisseur':ProviderSerializer(supplier).data,
-            'product':ProductSerializer(product).data,
-            'options' : OptionsSerializer(options).data,
-            'images' : ProductImageSerializer(images,many=True).data
+                'fournisseur': ProviderSerializer(supplier).data,
+                'product': ProductSerializer(product).data,
+                'options': OptionsSerializer(options).data if options else {},
+                'images': ProductImageSerializer(images, many=True).data
             }
             resps.append(resp)
-        return Response(resps,status.HTTP_200_OK)
+            
+        return Response({
+            'count': paginator.count,
+            'num_pages': paginator.num_pages,
+            'current_page': page_obj.number,
+            'results': resps
+        }, status.HTTP_200_OK)
     
 class SilentGetProducts(APIView):
     permission_classes = [permissions.AllowAny]
@@ -360,7 +379,7 @@ class MvtStockViewSet(ModelViewSet):
                 decoded_date = unquote(search_date)
 
                 # Convert the decoded string to a datetime object
-                search_datetime = datetime.strptime(decoded_date, "%Y-%m-%dT%H:%M:%S.%fZ")
+                search_datetime = timezone.make_aware(datetime.strptime(decoded_date, "%Y-%m-%dT%H:%M:%S.%fZ"))
 
                 # Get the start and end of the day
                 temp_day = search_datetime.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -475,6 +494,7 @@ class OrderV(APIView):
         resp = {}
         return Response(resp,status.HTTP_200_OK)
 
+    @transaction.atomic
     def post(self,request,format="None"):
         data = request.data 
         resp = {}
@@ -541,12 +561,26 @@ class DelOrderProd(APIView):
 class OrderFilter(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
+    @transaction.atomic
     def post(self,request,format="none"):
         data = request.data
-        print(data)
-        orders = Order.objects.filter(date__gte=data['startdate'],date__lte = data['enddate']).order_by('-date')
+        page_number = request.query_params.get('page', 1)
+        page_size = request.query_params.get('page_size', 20)
+        
+        orders_qs = Order.objects.filter(
+            date__gte=data['startdate'],
+            date__lte=data['enddate']
+        ).order_by('-date').select_related('client').prefetch_related('orderdetails_set')
+        
+        paginator = Paginator(orders_qs, page_size)
+        
+        try:
+            page_obj = paginator.get_page(page_number)
+        except Exception:
+            return Response({"error": "Invalid page"}, status=status.HTTP_400_BAD_REQUEST)
+
         resp = []
-        for order in orders:
+        for order in page_obj:
             client = ClientSerializer(order.client).data
             o = OrderSerializer(order).data
             details = OrderDetailsSerializer(order.orderdetails_set.all(), many=True).data
@@ -556,7 +590,12 @@ class OrderFilter(APIView):
                 'details' : details
             })
             
-        return Response(resp,status.HTTP_200_OK)
+        return Response({
+            'count': paginator.count,
+            'num_pages': paginator.num_pages,
+            'current_page': page_obj.number,
+            'results': resp
+        }, status.HTTP_200_OK)
 
 
 class EcheanceFilter(APIView):
@@ -614,6 +653,7 @@ class delEcheance(APIView):
 class ModOrder(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
+    @transaction.atomic
     def post(self,request,format="none"):
         data = request.data
         print(data)
@@ -812,7 +852,7 @@ def sub_month_date(dt,interval):
 
 
 def startyear(n):
-    return datetime.strptime('{0}-1-1'.format(str(n.year)),"%Y-%d-%m")
+    return timezone.make_aware(datetime.strptime('{0}-1-1'.format(str(n.year)),"%Y-%d-%m"))
 
 
 
@@ -905,8 +945,8 @@ class GetProviderData(APIView):
 class GetTop(APIView):
 
     def get(self,request,format=None):
-        resp ={
-            'providers_ranks': {
+        resp = {
+            'providers_ranks':{
                 'providers':[],
                 'quantity' :[]
             },
@@ -915,33 +955,24 @@ class GetTop(APIView):
                 'total':[]
             }
         }
-        provider_rank = []
-        ps = Provider.objects.all()
-        for p in ps:
-            q = 0
-            ps = p.product_set.all()
-            for product in ps:
-                q += product.quantity
-            provider_rank.append({'name':p.name,'q': q})
-        newlist = sorted(provider_rank, key=lambda k: k['q'])[::-1]
-        resp['providers_ranks']['providers'] = [x['name'] for x in newlist][:5]
-        if (any([x['q'] for x in newlist][:5])):
-            resp['providers_ranks']['quantity'] = [x['q'] for x in newlist][:5]
         
+        # Optimize Provider Ranking
+        top_providers = Provider.objects.annotate(
+            total_q=Sum('product__quantity')
+        ).filter(total_q__gt=0).order_by('-total_q')[:5]
+        
+        for p in top_providers:
+            resp['providers_ranks']['providers'].append(p.name)
+            resp['providers_ranks']['quantity'].append(p.total_q)
             
-
-        client_rank = []
-        clients = Client.objects.all()
-        for client in clients:
-            tot = 0
-            orders = client.order_set.all()
-            for order in orders:
-                tot += order.total
-            client_rank.append({'name':client.name,'total':tot})
-        newlist = sorted(client_rank, key=lambda k: k['total'])[::-1]
-        resp['clients_ranks']['clients'] = [x['name'] for x in newlist][:5]
-        if (any([x['total'] for x in newlist][:5])):
-            resp['clients_ranks']['total'] = [x['total'] for x in newlist][:5]
+        # Optimize Client Ranking
+        top_clients = Client.objects.annotate(
+            total_spent=Sum('order__total')
+        ).filter(total_spent__gt=0).order_by('-total_spent')[:5]
+        
+        for c in top_clients:
+            resp['clients_ranks']['clients'].append(c.name)
+            resp['clients_ranks']['total'].append(c.total_spent)
 
         return Response(resp,status.HTTP_200_OK)
 
@@ -951,77 +982,58 @@ class GetStable(APIView):
     #permission_classes = [permissions.IsAuthenticated]
 
     def get(self,request,format=None):
-        now = datetime.now()
-        start_stable = sub_day_date(now,7)
+        now = timezone.now()
+        start_stable = now - timedelta(days=7)
         resp = {
-            'ventes':{
-                'quantity':0,
-                'total' : 0
-            },
-            'achat':{
-                'quantity':0,
-                'total' : 0
-            },
-            'stock':{
-                'quantity':0,
-                'total' : 0
-            },
-            'bar':{
-                'profit' : [],
-                'ventes' : []
-            }
+            'ventes': {'quantity': 0, 'total': 0},
+            'achat': {'quantity': 0, 'total': 0},
+            'stock': {'quantity': 0, 'total': 0},
+            'bar': {'profit': [], 'ventes': []}
         }
-        orders = Order.objects.filter(date__gte=start_stable,date__lte = now)
-        temp_tot = 0
-        temp_q = 0
-        for o in orders:
-            temp_tot += o.total 
-            for od in o.orderdetails_set.all():
-                temp_q += od.quantity
-        resp['ventes']['total'] = temp_tot
-        resp['ventes']['quantity'] = temp_q
+        
+        # Optimize Sales Data (last 7 days)
+        sales_agg = Order.objects.filter(date__gte=start_stable, date__lte=now).aggregate(
+            total=Sum('total'),
+            quantity=Sum('orderdetails__quantity')
+        )
+        resp['ventes']['total'] = sales_agg['total'] or 0
+        resp['ventes']['quantity'] = sales_agg['quantity'] or 0
 
-        temp_tot = 0
-        temp_q = 0
-        ps = Product.objects.filter(date__gte=start_stable,date__lte = now)
-
-        for p in ps:
-            temp_tot += (p.price_achat * p.quantity)
-            temp_q += p.quantity
-
-        resp['achat']['total'] = temp_tot
-        resp['achat']['quantity'] = temp_q
-        temp_tot = 0
-        temp_q = 0
-        allps = Product.objects.all()
-        for p in allps:
-            temp_tot += (p.price_achat * p.quantity)
-            temp_q += p.quantity
-        resp['stock']['total'] = temp_tot
-        resp['stock']['quantity'] = temp_q
-        data = {}
+        # Optimize Current Purchases (last 7 days)
+        purchases_agg = Product.objects.filter(date__gte=start_stable, date__lte=now).aggregate(
+            total=Sum(F('price_achat') * F('quantity')),
+            quantity=Sum('quantity')
+        )
+        resp['achat']['total'] = purchases_agg['total'] or 0
+        resp['achat']['quantity'] = purchases_agg['quantity'] or 0
+        
+        # Optimize Total Stock
+        stock_agg = Product.objects.aggregate(
+            total=Sum(F('price_achat') * F('quantity')),
+            quantity=Sum('quantity')
+        )
+        resp['stock']['total'] = stock_agg['total'] or 0
+        resp['stock']['quantity'] = stock_agg['quantity'] or 0
+        
+        # Optimize Bar Chart Data (Monthly)
         start = startyear(now)
-        for _ in range(1,13):
-            end_date = add_month_date(start,1)
-            #print(str(s) + ' ==> ' + str(end_date))
-            orders = Order.objects.filter(date__gte=start,date__lte = end_date)
-            v = 0
-            profit = 0
-            for order in orders:
-                for od in order.orderdetails_set.all():
-                    v += od.quantity
-                    if od.prix < od.prix_achat:
-                        print('here')
-                        print(od.product_name)
-                        print(od.prix)
-                        print(od.prix_achat)
-                    profit += ( (od.quantity * od.prix) - (od.quantity * od.prix_achat))
-            resp['bar']['profit'].append(profit)
-            resp['bar']['ventes'].append(v)
-
+        for _ in range(12):
+            end_date = add_month_date(start, 1)
+            
+            monthly_agg = OrderDetails.objects.filter(
+                order__date__gte=start, 
+                order__date__lt=end_date
+            ).aggregate(
+                total_qty=Sum('quantity'),
+                total_profit=Sum((F('prix') - F('prix_achat')) * F('quantity'))
+            )
+            
+            resp['bar']['ventes'].append(monthly_agg['total_qty'] or 0)
+            resp['bar']['profit'].append(monthly_agg['total_profit'] or 0)
+            
             start = end_date
 
-        return Response(resp,status.HTTP_200_OK)
+        return Response(resp, status.HTTP_200_OK)
 
 
 class GetOrderSalesData(APIView):
@@ -1047,13 +1059,12 @@ class GetOrderSalesData(APIView):
         start_of_current_month = today.replace(day=1)
 
         # Use the first month in `all_months` to define `twelve_months_ago`
-        twelve_months_ago = datetime.strptime(all_months[0], "%m/%Y").replace(day=1)
+        twelve_months_ago = timezone.make_aware(datetime.strptime(all_months[0], "%m/%Y").replace(day=1))
 
         # Query OrderDetails from the last 12 months
         orders_last_12_months = OrderDetails.objects.filter(
             order__date__gte=twelve_months_ago,order__date__lte=today
         ).select_related('order')
-        print(orders_last_12_months)
 
         # Prepare a nested dictionary to store results
         sales_data = defaultdict(lambda: defaultdict(lambda: {"total_sales": 0, "total_quantity": 0}))
