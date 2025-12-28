@@ -573,10 +573,16 @@ class OrderFilter(APIView):
         page_number = request.query_params.get('page', 1)
         page_size = request.query_params.get('page_size', 20)
         
-        orders_qs = Order.objects.filter(
-            date__gte=data['startdate'],
-            date__lte=data['enddate']
-        ).order_by('-date').select_related('client').prefetch_related('orderdetails_set')
+        filters = {
+            'date__gte': data.get('startdate'),
+            'date__lte': data.get('enddate')
+        }
+
+        client_id = data.get('client')
+        if client_id and client_id != 'all':
+            filters['client_id'] = client_id
+
+        orders_qs = Order.objects.filter(**filters).order_by('-date').select_related('client').prefetch_related('orderdetails_set')
         
         paginator = Paginator(orders_qs, page_size)
         
