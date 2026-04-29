@@ -8,6 +8,7 @@ from django.contrib.auth.models import AbstractUser
 
 class CustomUser(AbstractUser):
     email = models.EmailField(default='',null=True)
+    is_accounting_user = models.BooleanField(default=False)
 
 
 
