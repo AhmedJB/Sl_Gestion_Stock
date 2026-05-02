@@ -7,7 +7,7 @@ from .models import CustomUser,Product,Provider,Options,Invoices,Client,Order,Or
 class RegisterSerializer(ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ['id','username','email','password']
+        fields = ['id','username','email','password','is_accounting_user']
         extra_kwargs = {'password': {'write_only':True}}
 
     def create(self,validated,*args,**kwargs):
