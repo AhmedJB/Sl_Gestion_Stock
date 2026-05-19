@@ -305,7 +305,7 @@ function HistoryV(props) {
       startdate,
       enddate,
     };
-    let resp = await postReq("filterorder", body);
+    let resp = await postReq("filterorder/", body);
     if (resp) {
       console.log("############### Fitered states #################");
       console.log(newc);
