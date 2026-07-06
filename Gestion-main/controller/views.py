@@ -1136,3 +1136,33 @@ class GetTopProducts(APIView):
         # Convert the queryset to a list of dictionaries
         result = list(top_products)
         return Response(result,status.HTTP_200_OK)
+
+
+class GetSalesByMode(APIView):
+
+    def post(self, request, format=None):
+        data = request.data
+        startdate = data.get('startdate')
+        enddate = data.get('enddate')
+
+        filters = {}
+        if startdate:
+            filters['date__gte'] = startdate
+        if enddate:
+            filters['date__lte'] = enddate
+
+        mode_map = {0: 'cash', 1: 'cheque', 2: 'effet', 3: 'versement'}
+        result = {name: 0 for name in mode_map.values()}
+
+        sales_by_mode = (
+            Order.objects.filter(**filters)
+            .values('mode')
+            .annotate(total=Sum('total'))
+            .order_by('mode')
+        )
+
+        for entry in sales_by_mode:
+            mode_name = mode_map.get(entry['mode'], f'unknown_{entry["mode"]}')
+            result[mode_name] = entry['total']
+
+        return Response(result, status.HTTP_200_OK)

@@ -113,22 +113,23 @@ class FiscalYearViewSet(ModelViewSet):
             if create_next:
                 next_year_val = fy.year + 1
                 next_fy, created = FiscalYear.objects.get_or_create(year=next_year_val)
+                current_snapshots = fy.snapshots.all()
+                carried = 0
+                for snap in current_snapshots:
+                    StockSnapshot.objects.update_or_create(
+                        fiscal_year=next_fy,
+                        product=snap.product,
+                        defaults={
+                            'initial_qty': snap.current_qty,
+                            'current_qty': snap.current_qty,
+                        }
+                    )
+                    carried += 1
+                result['next_year'] = FiscalYearSerializer(next_fy).data
                 if created:
-                    # Carry over current quantities as initial for next year
-                    current_snapshots = fy.snapshots.all()
-                    new_snapshots = []
-                    for snap in current_snapshots:
-                        new_snapshots.append(StockSnapshot(
-                            fiscal_year=next_fy,
-                            product=snap.product,
-                            initial_qty=snap.current_qty,
-                            current_qty=snap.current_qty,
-                        ))
-                    StockSnapshot.objects.bulk_create(new_snapshots)
-                    result['next_year'] = FiscalYearSerializer(next_fy).data
-                    result['message'] += f' FY-{next_year_val} created with {len(new_snapshots)} carried-over snapshots.'
+                    result['message'] += f' FY-{next_year_val} created with {carried} carried-over snapshots.'
                 else:
-                    result['next_year_note'] = f'FY-{next_year_val} already exists.'
+                    result['message'] += f' FY-{next_year_val} updated with {carried} carried-over snapshots.'
 
         return Response(result, status=status.HTTP_200_OK)
 
