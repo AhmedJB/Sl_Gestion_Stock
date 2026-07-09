@@ -12,9 +12,15 @@ https://docs.djangoproject.com/en/3.2/ref/settings/
 
 from pathlib import Path
 import os
+import json
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Swap DB by changing this key: "Application", "Application2", or "sqlite"
+DB = "sqlite"
+with open(BASE_DIR / "gestionStock" / "db_configs.json") as f:
+    DB_CONFIGS = json.load(f)
 
 
 # Quick-start development settings - unsuitable for production
@@ -110,10 +116,7 @@ CORS_ALLOWED_ORIGINS = [
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
+    'default': DB_CONFIGS[DB]
 }
 
 
