@@ -137,6 +137,16 @@ class ModifyProvider(APIView):
         
         return Response(data, status.HTTP_200_OK)
 
+    def delete(self,request,id,format="None"):
+        p = Provider.objects.filter(id=id)
+        if len(p) != 0:
+            p = p[0]
+            data = ProviderSerializer(p).data
+            p.delete()
+        else:
+            data= {}
+        return Response(data, status.HTTP_200_OK)
+
     def post(self,request,id,format="None"):
         data = request.data
         supplier = Provider.objects.filter(id=id)[0]
@@ -193,6 +203,16 @@ class ModifyClient(APIView):
         else:
             data= {}
         
+        return Response(data, status.HTTP_200_OK)
+
+    def delete(self,request,id,format="None"):
+        p = Client.objects.filter(id=id)
+        if len(p) != 0:
+            p = p[0]
+            data = ClientSerializer(p).data
+            p.delete()
+        else:
+            data= {}
         return Response(data, status.HTTP_200_OK)
 
     def post(self,request,id,format="None"):
@@ -420,6 +440,20 @@ class ModifyProduct(APIView):
             data= {}
 
 
+        return Response(data, status.HTTP_200_OK)
+
+    def delete(self,request,id,format="None"):
+        p = Product.objects.filter(p_id = id)
+        if len(p) != 0:
+            p = p[0]
+            data = ProductSerializer(p).data
+            C = p.price_achat * p.quantity - p.paid
+            provider = p.provider
+            provider.credit -= C
+            provider.save()
+            p.delete()
+        else:
+            data= {}
         return Response(data, status.HTTP_200_OK)
 
     def post(self,request,id,format="None"):
