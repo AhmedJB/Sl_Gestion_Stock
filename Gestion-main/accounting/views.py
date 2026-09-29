@@ -228,6 +228,7 @@ class AccountingInvoiceViewSet(ModelViewSet):
             client_id=data.get('client_id'),
             payment_mode=data.get('payment_mode', ''),
             notes=data.get('notes', ''),
+            custom_reference=data.get('custom_reference', ''),
             status='CONFIRMED',
         )
         invoice.save()  # triggers generate_invoice_number
@@ -277,6 +278,41 @@ class AccountingInvoiceViewSet(ModelViewSet):
             AccountingInvoiceSerializer(invoice).data,
             status=status.HTTP_201_CREATED
         )
+
+    def partial_update(self, request, *args, **kwargs):
+        invoice = self.get_object()
+        is_locked = invoice.fiscal_year.is_locked
+        # Only allow comptabilité-relevant printable fields via PATCH to avoid accidental system field mutation
+        allowed = {'custom_reference', 'notes', 'payment_mode', 'status'}
+        allowed_if_locked = {'custom_reference'}  # cosmetic field allowed even when locked
+        # Filter request data to allowed fields so invoice_number etc cannot be tampered even if sent
+        filtered_data = {k: v for k, v in request.data.items() if k in allowed}
+        if not filtered_data:
+            return Response({'error': 'No valid fields to update. Allowed: custom_reference, notes, payment_mode, status.'}, status=status.HTTP_400_BAD_REQUEST)
+        if is_locked:
+            # On locked years, only custom_reference (print reference) is mutable; everything else is frozen for audit
+            if not set(filtered_data.keys()).issubset(allowed_if_locked):
+                return Response({'error': 'Fiscal year is locked. Seule la référence à imprimer (custom_reference) peut être modifiée sur une année clôturée.'}, status=status.HTTP_400_BAD_REQUEST)
+        if 'custom_reference' in filtered_data:
+            # normalize: strip and allow empty to clear
+            filtered_data['custom_reference'] = str(filtered_data['custom_reference']).strip()
+        serializer = self.get_serializer(invoice, data=filtered_data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        self.perform_update(serializer)
+        return Response(serializer.data)
+
+    def update(self, request, *args, **kwargs):
+        return self.partial_update(request, *args, **kwargs)
+
+    @action(detail=True, methods=['patch', 'post'])
+    def set_reference(self, request, pk=None):
+        """Set / update custom_reference used for printing. Allowed even when fiscal year is locked (cosmetic)."""
+        invoice = self.get_object()
+        # Allow even when locked — custom_reference is cosmetic for audit printing
+        custom_ref = str(request.data.get('custom_reference', '')).strip()
+        invoice.custom_reference = custom_ref
+        invoice.save(update_fields=['custom_reference', 'updated_at'])
+        return Response(AccountingInvoiceSerializer(invoice).data)
 
     @action(detail=True, methods=['post'])
     def cancel(self, request, pk=None):

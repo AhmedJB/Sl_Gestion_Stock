@@ -28,11 +28,15 @@ class StockSnapshotAdmin(admin.ModelAdmin):
 
 @admin.register(AccountingInvoice)
 class AccountingInvoiceAdmin(admin.ModelAdmin):
-    list_display = ('invoice_number', 'invoice_type', 'fiscal_year',
+    list_display = ('invoice_number', 'custom_reference', 'display_number', 'invoice_type', 'fiscal_year',
                     'provider', 'client', 'total', 'status', 'created_at')
     list_filter = ('invoice_type', 'status', 'fiscal_year')
-    search_fields = ('invoice_number',)
+    search_fields = ('invoice_number', 'custom_reference')
     inlines = [InvoiceItemInline, PaymentInline]
+
+    def display_number(self, obj):
+        return obj.display_number
+    display_number.short_description = 'Print Number'
 
 
 @admin.register(InvoiceItem)

@@ -59,12 +59,13 @@ class AccountingInvoiceSerializer(serializers.ModelSerializer):
     client_detail = ClientSerializer(source='client', read_only=True)
     total_paid = serializers.FloatField(read_only=True)
     balance_due = serializers.FloatField(read_only=True)
+    display_number = serializers.CharField(read_only=True)
     fiscal_year_display = serializers.IntegerField(source='fiscal_year.year', read_only=True)
 
     class Meta:
         model = AccountingInvoice
         fields = ['id', 'fiscal_year', 'fiscal_year_display',
-                  'invoice_number', 'invoice_type',
+                  'invoice_number', 'custom_reference', 'display_number', 'invoice_type',
                   'provider', 'provider_detail',
                   'client', 'client_detail',
                   'total', 'status', 'payment_mode', 'notes',
@@ -72,7 +73,8 @@ class AccountingInvoiceSerializer(serializers.ModelSerializer):
                   'items', 'payments',
                   'created_at', 'updated_at']
         extra_kwargs = {
-            'invoice_number': {'required': False},
+            'invoice_number': {'required': False, 'read_only': True},
+            'custom_reference': {'required': False, 'allow_blank': True},
             'total': {'required': False},
         }
 
@@ -83,10 +85,11 @@ class AccountingInvoiceListSerializer(serializers.ModelSerializer):
     client_name = serializers.CharField(source='client.name', read_only=True, default='')
     total_paid = serializers.FloatField(read_only=True)
     balance_due = serializers.FloatField(read_only=True)
+    display_number = serializers.CharField(read_only=True)
 
     class Meta:
         model = AccountingInvoice
-        fields = ['id', 'fiscal_year', 'invoice_number', 'invoice_type',
+        fields = ['id', 'fiscal_year', 'invoice_number', 'custom_reference', 'display_number', 'invoice_type',
                   'provider', 'provider_name',
                   'client', 'client_name',
                   'total', 'total_paid', 'balance_due',
@@ -104,6 +107,7 @@ class CreateInvoiceSerializer(serializers.Serializer):
     client_id = serializers.IntegerField(required=False, allow_null=True)
     payment_mode = serializers.CharField(required=False, default='', allow_blank=True)
     notes = serializers.CharField(required=False, default='', allow_blank=True)
+    custom_reference = serializers.CharField(required=False, default='', allow_blank=True)
     items = serializers.ListField(child=serializers.DictField(), min_length=1)
     # Each item dict: { product_id: int, quantity: int, unit_price: float }
 

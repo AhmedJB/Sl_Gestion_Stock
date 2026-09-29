@@ -70,6 +70,7 @@ class AccountingInvoice(models.Model):
 
     fiscal_year = models.ForeignKey(FiscalYear, on_delete=models.CASCADE, related_name='invoices')
     invoice_number = models.CharField(max_length=20, unique=True, db_index=True)
+    custom_reference = models.CharField(max_length=100, default='', blank=True, db_index=True, verbose_name='Custom Reference / Printed Number', help_text='Optional custom reference printed on the invoice instead of the system number.')
     invoice_type = models.CharField(max_length=5, choices=INVOICE_TYPE_CHOICES)
     
     # One of these will be set depending on invoice_type
@@ -99,6 +100,10 @@ class AccountingInvoice(models.Model):
     @property
     def balance_due(self):
         return self.total - self.total_paid
+
+    @property
+    def display_number(self):
+        return self.custom_reference if self.custom_reference else self.invoice_number
 
     def generate_invoice_number(self):
         """
