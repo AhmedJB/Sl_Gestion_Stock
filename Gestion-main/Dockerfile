@@ -24,7 +24,9 @@ COPY . /usr/src/app
 COPY ./configs/gestion /etc/nginx/sites-available
 RUN ln -s /etc/nginx/sites-available/gestion /etc/nginx/sites-enabled
 
+COPY ./docker-entrypoint.sh /usr/src/app/docker-entrypoint.sh
+RUN chmod +x /usr/src/app/docker-entrypoint.sh
 
 EXPOSE 80 443
 
-CMD bash -c "service nginx start && gunicorn --bind 0.0.0.0:8000 gestionStock.wsgi"
+CMD ["/usr/src/app/docker-entrypoint.sh"]
