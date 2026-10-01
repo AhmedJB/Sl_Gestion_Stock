@@ -18,7 +18,8 @@ import json
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 # Swap DB by changing this key: "Application", "Application2", or "sqlite"
-DB = "Application"
+# Env override allows Docker to use postgres while local dev defaults to sqlite
+DB = os.environ.get("DJANGO_DB", "sqlite")
 with open(BASE_DIR / "gestionStock" / "db_configs.json") as f:
     DB_CONFIGS = json.load(f)
 

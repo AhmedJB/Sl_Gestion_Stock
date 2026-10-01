@@ -81,7 +81,8 @@ class AccountingInvoice(models.Model):
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='DRAFT')
     payment_mode = models.CharField(max_length=50, default='', blank=True)  # CASH, CHECK, TRANSFER, etc.
     notes = models.TextField(default='', blank=True)
-    
+    invoice_date = models.DateTimeField(default=timezone.now, null=True, blank=True, db_index=True, verbose_name='Invoice Date', help_text='Editable accounting date printed on the invoice. Defaults to creation time.')
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -104,6 +105,10 @@ class AccountingInvoice(models.Model):
     @property
     def display_number(self):
         return self.custom_reference if self.custom_reference else self.invoice_number
+
+    @property
+    def effective_date(self):
+        return self.invoice_date or self.created_at
 
     def generate_invoice_number(self):
         """
@@ -132,6 +137,8 @@ class AccountingInvoice(models.Model):
     def save(self, *args, **kwargs):
         if not self.invoice_number:
             self.invoice_number = self.generate_invoice_number()
+        if not self.invoice_date:
+            self.invoice_date = timezone.now()
         super().save(*args, **kwargs)
 
 

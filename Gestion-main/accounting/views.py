@@ -34,6 +34,21 @@ class FiscalYearViewSet(ModelViewSet):
     serializer_class = FiscalYearSerializer
     queryset = FiscalYear.objects.all()
 
+    def create(self, request, *args, **kwargs):
+        # Prevent year sprawl: limit to reasonable range and duplicate check with friendly error
+        raw_year = request.data.get('year')
+        try:
+            year = int(raw_year)
+        except (TypeError, ValueError):
+            return Response({'error': 'Année invalide.'}, status=status.HTTP_400_BAD_REQUEST)
+        current = timezone.now().year
+        if year < 2000 or year > current + 5:
+            return Response({'error': f'Année hors plage (2000–{current+5}). Évitez 2030+ prématuré.'}, status=status.HTTP_400_BAD_REQUEST)
+        if FiscalYear.objects.filter(year=year).exists():
+            return Response({'error': f'Année {year} existe déjà.'}, status=status.HTTP_400_BAD_REQUEST)
+        # If creating a future year far ahead, warn but allow; frontend already confirms
+        return super().create(request, *args, **kwargs)
+
     @action(detail=True, methods=['post'])
     def initialize(self, request, pk=None):
         """
@@ -133,6 +148,68 @@ class FiscalYearViewSet(ModelViewSet):
 
         return Response(result, status=status.HTTP_200_OK)
 
+    @action(detail=True, methods=['post'])
+    def unlock(self, request, pk=None):
+        """
+        Unlock a previously locked fiscal year for corrections.
+        Audit log: unlocking is allowed but should be used sparingly.
+        Optionally updates notes with unlock reason.
+        """
+        fy = self.get_object()
+        if not fy.is_locked:
+            return Response(
+                {'error': 'Year is already open.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        reason = request.data.get('reason', '').strip()
+        with transaction.atomic():
+            fy.is_locked = False
+            fy.closed_at = None
+            if reason:
+                fy.notes = (fy.notes + f"\n[UNLOCK {timezone.now().isoformat()}] {reason}").strip()
+            fy.save(update_fields=['is_locked', 'closed_at', 'notes'])
+        return Response({
+            'message': f'FY-{fy.year} has been unlocked.',
+            'fiscal_year': FiscalYearSerializer(fy).data
+        }, status=status.HTTP_200_OK)
+
+    def destroy(self, request, *args, **kwargs):
+        """
+        Safe delete: only empty years (0 invoices) can be deleted normally.
+        Locked years with invoices require ?force=true and extra confirmation.
+        Snapshots and invoices cascade; we guard against accidental audit deletion.
+        """
+        fy = self.get_object()
+        force = str(request.query_params.get('force', '')).lower() in ('1','true','yes') or str(request.data.get('force', '')).lower() in ('1','true','yes')
+        invoice_count = fy.invoices.count()
+        snapshot_count = fy.snapshots.count()
+
+        # Prevent deleting the last fiscal year if it's the only one? Allow but warn.
+        if invoice_count > 0 and not force:
+            return Response(
+                {
+                    'error': f'Cannot delete FY-{fy.year}: {invoice_count} invoice(s) exist. Use force=true to confirm cascade deletion (will delete invoices/snapshots).',
+                    'invoice_count': invoice_count,
+                    'snapshot_count': snapshot_count,
+                    'is_locked': fy.is_locked,
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        if fy.is_locked and invoice_count > 0 and not force:
+            return Response(
+                {'error': f'FY-{fy.year} is locked and has invoices. Unlock first or use force=true.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        # If not forced but has invoices, still block; if forced, proceed
+        # For empty years, allow straight delete
+        # Perform deletion
+        year_val = fy.year
+        fy.delete()
+        return Response(
+            {'message': f'FY-{year_val} deleted.', 'invoice_count': invoice_count, 'snapshot_count': snapshot_count},
+            status=status.HTTP_200_OK
+        )
+
 
 # ──────────────────────────────────────────────
 #  Stock Snapshot (read-only for the most part)
@@ -229,6 +306,7 @@ class AccountingInvoiceViewSet(ModelViewSet):
             payment_mode=data.get('payment_mode', ''),
             notes=data.get('notes', ''),
             custom_reference=data.get('custom_reference', ''),
+            invoice_date=data.get('invoice_date') or timezone.now(),
             status='CONFIRMED',
         )
         invoice.save()  # triggers generate_invoice_number
@@ -283,16 +361,16 @@ class AccountingInvoiceViewSet(ModelViewSet):
         invoice = self.get_object()
         is_locked = invoice.fiscal_year.is_locked
         # Only allow comptabilité-relevant printable fields via PATCH to avoid accidental system field mutation
-        allowed = {'custom_reference', 'notes', 'payment_mode', 'status'}
-        allowed_if_locked = {'custom_reference'}  # cosmetic field allowed even when locked
+        allowed = {'custom_reference', 'notes', 'payment_mode', 'status', 'invoice_date'}
+        allowed_if_locked = {'custom_reference', 'invoice_date'}  # cosmetic/print fields allowed even when locked
         # Filter request data to allowed fields so invoice_number etc cannot be tampered even if sent
         filtered_data = {k: v for k, v in request.data.items() if k in allowed}
         if not filtered_data:
-            return Response({'error': 'No valid fields to update. Allowed: custom_reference, notes, payment_mode, status.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'No valid fields to update. Allowed: custom_reference, invoice_date, notes, payment_mode, status.'}, status=status.HTTP_400_BAD_REQUEST)
         if is_locked:
-            # On locked years, only custom_reference (print reference) is mutable; everything else is frozen for audit
+            # On locked years, only print fields are mutable; everything else is frozen for audit
             if not set(filtered_data.keys()).issubset(allowed_if_locked):
-                return Response({'error': 'Fiscal year is locked. Seule la référence à imprimer (custom_reference) peut être modifiée sur une année clôturée.'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'error': 'Fiscal year is locked. Seuls la référence à imprimer (custom_reference) et la date (invoice_date) peuvent être modifiés sur une année clôturée.'}, status=status.HTTP_400_BAD_REQUEST)
         if 'custom_reference' in filtered_data:
             # normalize: strip and allow empty to clear
             filtered_data['custom_reference'] = str(filtered_data['custom_reference']).strip()
@@ -306,12 +384,22 @@ class AccountingInvoiceViewSet(ModelViewSet):
 
     @action(detail=True, methods=['patch', 'post'])
     def set_reference(self, request, pk=None):
-        """Set / update custom_reference used for printing. Allowed even when fiscal year is locked (cosmetic)."""
+        """Set / update custom_reference + invoice_date used for printing. Allowed even when fiscal year is locked (cosmetic)."""
         invoice = self.get_object()
-        # Allow even when locked — custom_reference is cosmetic for audit printing
-        custom_ref = str(request.data.get('custom_reference', '')).strip()
-        invoice.custom_reference = custom_ref
-        invoice.save(update_fields=['custom_reference', 'updated_at'])
+        # Allow even when locked — print fields are cosmetic for audit printing
+        fields = []
+        if 'custom_reference' in request.data:
+            invoice.custom_reference = str(request.data.get('custom_reference', '')).strip()
+            fields.append('custom_reference')
+        if 'invoice_date' in request.data:
+            invoice.invoice_date = request.data.get('invoice_date') or invoice.invoice_date
+            fields.append('invoice_date')
+        if not fields:
+            # backward compat: bare custom_reference string
+            invoice.custom_reference = str(request.data.get('custom_reference', invoice.custom_reference)).strip()
+            fields = ['custom_reference']
+        fields.append('updated_at')
+        invoice.save(update_fields=list(set(fields)))
         return Response(AccountingInvoiceSerializer(invoice).data)
 
     @action(detail=True, methods=['post'])
