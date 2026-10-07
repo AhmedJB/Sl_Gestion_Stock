@@ -23,11 +23,12 @@ class StockSnapshotSerializer(serializers.ModelSerializer):
     product_detail = ProductSerializer(source='product', read_only=True)
     product_name = serializers.CharField(source='product.name', read_only=True)
     product_p_id = serializers.CharField(source='product.p_id', read_only=True)
+    product_reference = serializers.CharField(source='product.reference', read_only=True, default='')
 
     class Meta:
         model = StockSnapshot
         fields = ['id', 'fiscal_year', 'product', 'product_detail',
-                  'product_name', 'product_p_id',
+                  'product_name', 'product_p_id', 'product_reference',
                   'initial_qty', 'current_qty']
 
 
@@ -41,11 +42,17 @@ class PaymentSerializer(serializers.ModelSerializer):
 
 class InvoiceItemSerializer(serializers.ModelSerializer):
     product_detail = ProductSerializer(source='product', read_only=True)
+    effective_unit_ttc = serializers.FloatField(read_only=True)
+    effective_unit_ht = serializers.FloatField(read_only=True)
+    effective_total_ttc = serializers.FloatField(read_only=True)
 
     class Meta:
         model = InvoiceItem
         fields = ['id', 'invoice', 'product', 'product_detail',
-                  'product_name', 'quantity', 'unit_price', 'total']
+                  'reference', 'product_name', 'quantity',
+                  'unit_price', 'unit_price_ttc', 'discount',
+                  'effective_unit_ht', 'effective_unit_ttc', 'effective_total_ttc',
+                  'total']
         extra_kwargs = {
             'invoice': {'required': False},
             'total': {'read_only': True},
@@ -107,7 +114,7 @@ class CreateInvoiceSerializer(serializers.Serializer):
     Serializer for creating an invoice with its items in a single request.
     """
     fiscal_year_id = serializers.IntegerField()
-    invoice_type = serializers.ChoiceField(choices=['ACHAT', 'VENTE'])
+    invoice_type = serializers.ChoiceField(choices=['ACHAT', 'VENTE', 'AVOIR'])
     provider_id = serializers.IntegerField(required=False, allow_null=True)
     client_id = serializers.IntegerField(required=False, allow_null=True)
     payment_mode = serializers.CharField(required=False, default='', allow_blank=True)
@@ -115,11 +122,13 @@ class CreateInvoiceSerializer(serializers.Serializer):
     custom_reference = serializers.CharField(required=False, default='', allow_blank=True)
     invoice_date = serializers.DateTimeField(required=False)
     items = serializers.ListField(child=serializers.DictField(), min_length=1)
-    # Each item dict: { product_id: int, quantity: int, unit_price: float }
+    # Each item dict: { product_id: int, reference: str, product_name: str, quantity: int, unit_price_ttc: float (or legacy unit_price), discount: float (remise %) }
 
     def validate(self, data):
         if data['invoice_type'] == 'ACHAT' and not data.get('provider_id'):
             raise serializers.ValidationError("provider_id is required for purchase invoices.")
         if data['invoice_type'] == 'VENTE' and not data.get('client_id'):
             raise serializers.ValidationError("client_id is required for sale invoices.")
+        if data['invoice_type'] == 'AVOIR' and not data.get('client_id'):
+            raise serializers.ValidationError("client_id is required for credit notes (avoir).")
         return data

@@ -92,7 +92,7 @@ class AddProvider(APIView):
     def post(self,request,format=None):
         data = request.data 
         s = ProviderSerializer(data = data)
-        p = Provider(name = data['name'],email = data['email'],phone=data['phone'],address=data['address'])
+        p = Provider(name = data['name'],email = data['email'],phone=data['phone'],address=data['address'],ice=data.get('ice',''))
         p.save()
         ps = ProviderSerializer(p).data
         return Response(ps)
@@ -154,6 +154,7 @@ class ModifyProvider(APIView):
         supplier.email = data['email']
         supplier.phone = data['phone']
         supplier.address = data['address']
+        supplier.ice = data.get('ice', supplier.ice)
         c = float(data['credit']) - float(data['creditp'])
         if c < 0:
             c = 0
@@ -169,7 +170,7 @@ class AddClient(APIView):
     def post(self,request,format=None):
         data = request.data 
         s = ClientSerializer(data = data)
-        p = Client(name = data['name'],email = data['email'],phone=data['phone'],address=data['address'])
+        p = Client(name = data['name'],email = data['email'],phone=data['phone'],address=data['address'],ice=data.get('ice',''))
         p.save()
         ps = ClientSerializer(p).data
         return Response(ps)
@@ -222,6 +223,7 @@ class ModifyClient(APIView):
         client.email = data['email']
         client.phone = data['phone']
         client.address = data['address']
+        client.ice = data.get('ice', client.ice)
         client.credit = float(data['credit']) - float(data['creditp'])
         client.save()
         s = ClientSerializer(client).data

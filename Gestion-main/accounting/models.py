@@ -50,15 +50,18 @@ class StockSnapshot(models.Model):
 
 class AccountingInvoice(models.Model):
     """
-    Official accounting invoice for purchases (ACHAT) or sales (VENTE).
-    
+    Official accounting invoice for purchases (ACHAT), sales (VENTE)
+    or credit notes (AVOIR, goods returned / refund to client).
+
     invoice_number is sequential per year and type:
       FA-2026-00001 for purchases
       FV-2026-00001 for sales
+      AV-2026-00001 for credit notes
     """
     INVOICE_TYPE_CHOICES = [
         ('ACHAT', 'Achat (Purchase)'),
         ('VENTE', 'Vente (Sale)'),
+        ('AVOIR', 'Avoir (Credit Note)'),
     ]
     STATUS_CHOICES = [
         ('DRAFT', 'Draft'),
@@ -115,7 +118,7 @@ class AccountingInvoice(models.Model):
         Generates the next sequential invoice number for this
         fiscal year and type.
         """
-        prefix = 'FA' if self.invoice_type == 'ACHAT' else 'FV'
+        prefix = {'ACHAT': 'FA', 'VENTE': 'FV', 'AVOIR': 'AV'}.get(self.invoice_type, 'FV')
         year = self.fiscal_year.year
 
         last = AccountingInvoice.objects.filter(
@@ -145,12 +148,21 @@ class AccountingInvoice(models.Model):
 class InvoiceItem(models.Model):
     """
     A line item on an accounting invoice.
+
+    Pricing (comptabilité, TTC-based since 10/2026):
+    - unit_price = HT unit price (legacy field, kept for history)
+    - unit_price_ttc = TTC unit price entered on the invoice (null on legacy rows)
+    - total = TTC line total (qty * TTC) on new rows, HT total on legacy rows
+    Effective values are exposed via properties so old invoices still print.
     """
     invoice = models.ForeignKey(AccountingInvoice, on_delete=models.CASCADE, related_name='items')
     product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, blank=True, related_name='invoice_items')
+    reference = models.CharField(max_length=100, default='', blank=True, db_index=True, verbose_name='Product Reference', help_text='Supplier catalogue reference printed on the invoice.')
     product_name = models.CharField(max_length=255)  # Denormalized for historical accuracy
     quantity = models.IntegerField(default=0)
-    unit_price = models.FloatField(default=0)
+    unit_price = models.FloatField(default=0)  # HT (legacy canonical)
+    unit_price_ttc = models.FloatField(default=0)  # TTC entered (0/null = legacy row, derive x1.2)
+    discount = models.FloatField(default=0, verbose_name='Remise (%)', help_text='Line discount percent, e.g. 35 = -35%. Applied on the TTC line total.')
     total = models.FloatField(default=0)
 
     class Meta:
@@ -158,10 +170,42 @@ class InvoiceItem(models.Model):
         verbose_name_plural = 'Invoice Items'
 
     def __str__(self):
-        return f"{self.product_name} x{self.quantity}"
+        ref = f"[{self.reference}] " if self.reference else ""
+        return f"{ref}{self.product_name} x{self.quantity}"
+
+    @property
+    def discount_factor(self):
+        try:
+            d = float(self.discount or 0)
+        except (TypeError, ValueError):
+            d = 0
+        return max(0.0, min(1.0, 1.0 - d / 100.0))
+
+    @property
+    def effective_unit_ttc(self):
+        if self.unit_price_ttc:
+            return self.unit_price_ttc
+        return round(self.unit_price * 1.2, 2)
+
+    @property
+    def effective_unit_ht(self):
+        if self.unit_price_ttc:
+            return round(self.unit_price_ttc / 1.2, 2)
+        return self.unit_price
+
+    @property
+    def effective_total_ttc(self):
+        if self.unit_price_ttc:
+            return round(self.quantity * self.unit_price_ttc * self.discount_factor, 2)
+        return round(self.quantity * self.unit_price * 1.2 * self.discount_factor, 2)
 
     def save(self, *args, **kwargs):
-        self.total = self.quantity * self.unit_price
+        if self.unit_price_ttc:
+            if not self.unit_price:
+                self.unit_price = round(self.unit_price_ttc / 1.2, 2)
+            self.total = round(self.quantity * self.unit_price_ttc * self.discount_factor, 2)
+        else:
+            self.total = round(self.quantity * self.unit_price * self.discount_factor, 2)
         super().save(*args, **kwargs)
 
 

@@ -23,12 +23,12 @@ class RegisterSerializer(ModelSerializer):
 class ProviderSerializer(ModelSerializer):
     class Meta:
         model = Provider
-        fields = ['id','name','email','credit','phone','address','date']
+        fields = ['id','name','email','credit','phone','address','ice','date']
 
 class ClientSerializer(ModelSerializer):
     class Meta:
         model = Client
-        fields = ['id','name','email','credit','phone','address','date']
+        fields = ['id','name','email','credit','phone','address','ice','date']
         
 class OrderSerializer(ModelSerializer):
     class Meta:
@@ -48,7 +48,7 @@ class GeneralOrderDetailsSerializer(ModelSerializer):
 class ProductSerializer(ModelSerializer):
     class Meta:
         model = Product
-        fields = ['id','p_id','name','paid','ptype','price_vente','price_achat','quantity']
+        fields = ['id','p_id','reference','name','paid','ptype','price_vente','price_achat','quantity']
 
 class ProductImageSerializer(ModelSerializer):
     class Meta:

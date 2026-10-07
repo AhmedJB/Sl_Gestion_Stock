@@ -20,6 +20,7 @@ class Provider(models.Model):
     email = models.CharField(max_length=255,default='')
     phone = models.CharField(max_length=255,default='')
     address = models.CharField(max_length=255,default="")
+    ice = models.CharField(max_length=50,default='',blank=True,db_index=True)
     credit = models.FloatField(default=0)
     date = models.DateTimeField(auto_now_add=True)
 
@@ -31,6 +32,7 @@ class Client(models.Model):
     email = models.CharField(max_length=255,default='')
     phone = models.CharField(max_length=255,default='')
     address = models.CharField(max_length=255,default="")
+    ice = models.CharField(max_length=50,default='',blank=True,db_index=True)
     credit = models.FloatField(default=0)
     date = models.DateTimeField(auto_now_add=True)
 
@@ -45,6 +47,7 @@ class Client(models.Model):
 class Product(models.Model):
     provider = models.ForeignKey(Provider , on_delete=models.CASCADE)
     p_id = models.CharField(max_length=255,default='', db_index=True)
+    reference = models.CharField(max_length=100,default='',blank=True,db_index=True,verbose_name='Supplier Reference',help_text='Supplier catalogue reference, e.g. 1J0122291. Used on comptabilité invoices.')
     name = models.CharField(max_length=255,default='')
     ptype = models.CharField(max_length=255,default='')
     #place = models.IntegerField(default=0)

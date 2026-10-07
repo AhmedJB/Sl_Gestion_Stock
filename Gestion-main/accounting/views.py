@@ -219,6 +219,9 @@ class StockSnapshotViewSet(ModelViewSet):
     """
     View and manage stock snapshots for a given fiscal year.
     Filterable via ?year=2026
+
+    PATCH accepts { initial_qty } plus compta-only { product_reference },
+    which updates the linked Product.reference (supplier catalogue ref).
     """
     permission_classes = [IsAccountingUser]
     serializer_class = StockSnapshotSerializer
@@ -229,6 +232,19 @@ class StockSnapshotViewSet(ModelViewSet):
         if year:
             qs = qs.filter(fiscal_year__year=int(year))
         return qs
+
+    def partial_update(self, request, *args, **kwargs):
+        snap = self.get_object()
+        data = dict(request.data)
+        product_ref = data.pop('product_reference', None)
+        if product_ref is not None and snap.product:
+            snap.product.reference = str(product_ref).strip()
+            snap.product.save(update_fields=['reference'])
+        if data:
+            serializer = self.get_serializer(snap, data=data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+        return Response(self.get_serializer(self.get_object()).data)
 
 
 # ──────────────────────────────────────────────
@@ -312,27 +328,43 @@ class AccountingInvoiceViewSet(ModelViewSet):
         invoice.save()  # triggers generate_invoice_number
 
         # Create line items and update stock snapshots
+        # Compta prices are entered TTC: unit_price_ttc preferred, legacy unit_price treated as TTC
         total = 0
         for item_data in data['items']:
             product_id = item_data.get('product_id')
             quantity = int(item_data.get('quantity', 0))
-            unit_price = float(item_data.get('unit_price', 0))
+            raw_ttc = item_data.get('unit_price_ttc', item_data.get('unit_price', 0))
+            try:
+                unit_ttc = round(float(raw_ttc), 2)
+            except (TypeError, ValueError):
+                unit_ttc = 0
 
             product = None
             product_name = item_data.get('product_name', '')
+            reference = str(item_data.get('reference', '') or '').strip()
+            try:
+                discount = float(item_data.get('discount', 0) or 0)
+            except (TypeError, ValueError):
+                discount = 0
+            discount = max(0.0, min(100.0, discount))
             if product_id:
                 try:
                     product = Product.objects.get(id=product_id)
                     product_name = product.name
+                    if not reference:
+                        reference = product.reference or ''
                 except Product.DoesNotExist:
                     pass
 
             item = InvoiceItem.objects.create(
                 invoice=invoice,
                 product=product,
+                reference=reference,
                 product_name=product_name,
                 quantity=quantity,
-                unit_price=unit_price,
+                unit_price=round(unit_ttc / 1.2, 2) if unit_ttc else 0,
+                unit_price_ttc=unit_ttc,
+                discount=discount,
             )
             total += item.total
 
@@ -347,6 +379,9 @@ class AccountingInvoiceViewSet(ModelViewSet):
                     snapshot.current_qty += quantity
                 elif data['invoice_type'] == 'VENTE':
                     snapshot.current_qty -= quantity
+                elif data['invoice_type'] == 'AVOIR':
+                    # Credit note = goods returned by the client → stock goes back up
+                    snapshot.current_qty += quantity
                 snapshot.save()
 
         invoice.total = total
@@ -425,6 +460,8 @@ class AccountingInvoiceViewSet(ModelViewSet):
                             snapshot.current_qty -= item.quantity
                         elif invoice.invoice_type == 'VENTE':
                             snapshot.current_qty += item.quantity
+                        elif invoice.invoice_type == 'AVOIR':
+                            snapshot.current_qty -= item.quantity
                         snapshot.save()
                     except StockSnapshot.DoesNotExist:
                         pass
@@ -504,7 +541,8 @@ class AccountingStatsView(APIView):
     - debts_providers: outstanding balance owed to providers (unpaid purchase invoices)
     - debts_clients: outstanding balance owed by clients (unpaid sale invoices)
     - top_products_sold: top 5 products by quantity sold
-    - invoice_counts: { achat, vente, total }
+    - total_avoirs: total of active credit notes (deducted from valeur_vendue)
+    - invoice_counts: { achat, vente, avoir, total }
     """
     permission_classes = [IsAccountingUser]
 
@@ -528,17 +566,21 @@ class AccountingStatsView(APIView):
             fiscal_year=fy
         ).exclude(status='CANCELLED')
 
-        # Sales total
+        # Sales total (net of credit notes issued to clients)
         sales_total = active_invoices.filter(
             invoice_type='VENTE'
         ).aggregate(total=Sum('total'))['total'] or 0
+        avoir_total = active_invoices.filter(
+            invoice_type='AVOIR'
+        ).aggregate(total=Sum('total'))['total'] or 0
+        net_sales = sales_total - avoir_total
 
         # Purchase total
         purchase_total = active_invoices.filter(
             invoice_type='ACHAT'
         ).aggregate(total=Sum('total'))['total'] or 0
 
-        # Profit = sales revenue - cost of goods sold
+        # Profit = net sales revenue - cost of goods sold (net of returned goods)
         cogs = InvoiceItem.objects.filter(
             invoice__fiscal_year=fy,
             invoice__invoice_type='VENTE',
@@ -547,8 +589,16 @@ class AccountingStatsView(APIView):
         ).aggregate(
             total=Sum(F('quantity') * F('product__price_achat'))
         )['total'] or 0
+        cogs_avoir = InvoiceItem.objects.filter(
+            invoice__fiscal_year=fy,
+            invoice__invoice_type='AVOIR',
+        ).exclude(
+            invoice__status='CANCELLED'
+        ).aggregate(
+            total=Sum(F('quantity') * F('product__price_achat'))
+        )['total'] or 0
 
-        profit = sales_total - cogs
+        profit = net_sales - (cogs - cogs_avoir)
 
         # Debts to providers (unpaid purchase invoices)
         purchase_invoices = active_invoices.filter(invoice_type='ACHAT')
@@ -594,13 +644,15 @@ class AccountingStatsView(APIView):
         # Invoice counts
         achat_count = active_invoices.filter(invoice_type='ACHAT').count()
         vente_count = active_invoices.filter(invoice_type='VENTE').count()
+        avoir_count = active_invoices.filter(invoice_type='AVOIR').count()
 
         return Response({
             'fiscal_year': fy.year,
             'is_locked': fy.is_locked,
             'valeur_marchandise': round(stock_value, 2),
-            'valeur_vendue': round(sales_total, 2),
+            'valeur_vendue': round(net_sales, 2),
             'total_achats': round(purchase_total, 2),
+            'total_avoirs': round(avoir_total, 2),
             'profit': round(profit, 2),
             'debts_providers': debts_providers,
             'debts_providers_total': round(sum(d['balance'] for d in debts_providers), 2),
@@ -610,6 +662,7 @@ class AccountingStatsView(APIView):
             'invoice_counts': {
                 'achat': achat_count,
                 'vente': vente_count,
-                'total': achat_count + vente_count,
+                'avoir': avoir_count,
+                'total': achat_count + vente_count + avoir_count,
             }
         })

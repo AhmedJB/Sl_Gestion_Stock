@@ -41,7 +41,8 @@ class AccountingInvoiceAdmin(admin.ModelAdmin):
 
 @admin.register(InvoiceItem)
 class InvoiceItemAdmin(admin.ModelAdmin):
-    list_display = ('invoice', 'product_name', 'quantity', 'unit_price', 'total')
+    list_display = ('invoice', 'reference', 'product_name', 'quantity', 'unit_price', 'unit_price_ttc', 'discount', 'total')
+    search_fields = ('reference', 'product_name')
 
 
 @admin.register(Payment)
