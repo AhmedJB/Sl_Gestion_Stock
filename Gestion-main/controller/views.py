@@ -20,6 +20,14 @@ from django.db.models import Sum, F
 from django.db import transaction
 from django.core.paginator import Paginator
 
+# Products under this provider belong to the accounting (comptabilite)
+# opening stock (FY-2026). They must stay invisible to the internal gestion
+# endpoints — the accounting API (accounting/views.py) keeps using them
+# through its own unfiltered queries. NOTE: do NOT delete these Product
+# rows: StockSnapshot.product is on_delete=CASCADE, deleting them would
+# destroy the FY-2026 snapshots as well.
+ACCOUNTING_PROVIDER_NAME = "STOCK-2026-NAJAT"
+
 # Create your views here.
 
 class Register(APIView):
@@ -98,7 +106,7 @@ class AddProvider(APIView):
         return Response(ps)
 
     def get(self,request,format=None):
-        ps = Provider.objects.all()
+        ps = Provider.objects.exclude(name=ACCOUNTING_PROVIDER_NAME)
         s = ProviderSerializer(ps,many=True).data
         return Response(s,status.HTTP_200_OK)
 
@@ -111,6 +119,8 @@ class getProviderProducts(APIView):
         if provider_id:
             prov = Provider.objects.filter(id=provider_id).first()
             if prov:
+                if prov.name == ACCOUNTING_PROVIDER_NAME:
+                    return Response([],status=status.HTTP_200_OK)
                 produdcts = Product.objects.filter(provider = prov)
                 data = ProductWithChangeSerialize(produdcts,many=True).data
                 return Response(data,status=status.HTTP_200_OK)
@@ -241,6 +251,8 @@ class AddProduct(APIView):
         data = request.data 
         print(data)
         supplier = Provider.objects.filter(id=data['fournisseur'])[0]
+        if supplier.name == ACCOUNTING_PROVIDER_NAME:
+            return Response({'error': 'Accounting stock cannot be modified from internal stock.'},status.HTTP_400_BAD_REQUEST)
         if (supplier.credit + ((float(data['product']['quantity']) * float(data['product']['price_achat'])) - float(data['product']['paid'])) >= 0):
             supplier.credit += ((float(data['product']['quantity']) * float(data['product']['price_achat'])) - float(data['product']['paid']))
         
@@ -271,7 +283,7 @@ class AddProduct(APIView):
         page_number = request.query_params.get('page', 1)
         page_size = request.query_params.get('page_size', 20)
         
-        products_qs = Product.objects.all().order_by('-quantity').select_related('provider').prefetch_related('options_set', 'productimage_set')
+        products_qs = Product.objects.exclude(provider__name=ACCOUNTING_PROVIDER_NAME).order_by('-quantity').select_related('provider').prefetch_related('options_set', 'productimage_set')
         paginator = Paginator(products_qs, page_size)
         
         try:
@@ -307,7 +319,7 @@ class SilentGetProducts(APIView):
 
     def get(self,request,format=None):
         resps = []
-        products = Product.objects.all().order_by('-quantity')
+        products = Product.objects.exclude(provider__name=ACCOUNTING_PROVIDER_NAME).order_by('-quantity')
         for product  in products:
             supplier = product.provider
             options = product.options_set.all()[0]
@@ -331,7 +343,7 @@ class SilentGetProductsInfo(APIView):
         if len(ids) > 0:
             result = []
             for id_ in ids:
-                p = Product.objects.filter(p_id=id_).first()
+                p = Product.objects.filter(p_id=id_).exclude(provider__name=ACCOUNTING_PROVIDER_NAME).first()
                 if p:
                     result.append(ProductWithImageSerializer(p).data)
 
@@ -352,7 +364,7 @@ class SilentGetInfo(APIView):
         if  data:
             products_obj= []
             for id_ in data:
-                p= Product.objects.filter(p_id=id_).first()
+                p= Product.objects.filter(p_id=id_).exclude(provider__name=ACCOUNTING_PROVIDER_NAME).first()
                 if p:
                     products_obj.append(p)
                 
@@ -369,7 +381,7 @@ class ProductImageViewSet(ModelViewSet):
     def get_queryset(self):
         pid = self.request.GET.get("pid",False)
         if pid:
-            product = Product.objects.filter(id = int(pid)).first()
+            product = Product.objects.filter(id = int(pid)).exclude(provider__name=ACCOUNTING_PROVIDER_NAME).first()
             if product:
                 return ProductImage.objects.filter(product=product)
             else:
@@ -388,7 +400,7 @@ class MvtStockViewSet(ModelViewSet):
         pid = self.request.GET.get("pid",False)
         search_date = self.request.GET.get("searchdate",False)
         if pid and search_date:
-            product = Product.objects.filter(id = int(pid)).first()
+            product = Product.objects.filter(id = int(pid)).exclude(provider__name=ACCOUNTING_PROVIDER_NAME).first()
             if product:
                 # Assuming search_date is a string in the format "2023-06-28T23%3A00%3A00.000Z"
                 decoded_date = unquote(search_date)
@@ -429,7 +441,7 @@ class ModifyProduct(APIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get(self,request,id,format="None"):
-        p = Product.objects.filter(p_id = id)
+        p = Product.objects.filter(p_id = id).exclude(provider__name=ACCOUNTING_PROVIDER_NAME)
         if len(p) != 0:
             p = p[0]
             data = ProductSerializer(p).data
@@ -445,7 +457,7 @@ class ModifyProduct(APIView):
         return Response(data, status.HTTP_200_OK)
 
     def delete(self,request,id,format="None"):
-        p = Product.objects.filter(p_id = id)
+        p = Product.objects.filter(p_id = id).exclude(provider__name=ACCOUNTING_PROVIDER_NAME)
         if len(p) != 0:
             p = p[0]
             data = ProductSerializer(p).data
@@ -461,9 +473,11 @@ class ModifyProduct(APIView):
     def post(self,request,id,format="None"):
         data = request.data
         
-        p = Product.objects.filter(p_id = id)[0]
+        p = Product.objects.filter(p_id = id).exclude(provider__name=ACCOUNTING_PROVIDER_NAME)[0]
         print(data)
         supplier = Provider.objects.filter(id=data['fournisseur']['id'])[0]
+        if supplier.name == ACCOUNTING_PROVIDER_NAME:
+            return Response({'error': 'Accounting stock cannot be modified from internal stock.'},status.HTTP_400_BAD_REQUEST)
         q = int(data['product']['quantity'])
         credit = ((q - p.quantity) * float(data['product']['price_achat'])) - (float(data['product']['paid']) -  p.paid)
         if (supplier.credit + credit >= 0):
@@ -502,7 +516,7 @@ class ModifyProduct(APIView):
 class OrderProduct(APIView):
 
     def get(self,request,id,format="None"):
-        p = Product.objects.filter(p_id = id)
+        p = Product.objects.filter(p_id = id).exclude(provider__name=ACCOUNTING_PROVIDER_NAME)
         if len(p) > 0:
             p = p[0]
             data = ProductSerializer(p).data
@@ -548,7 +562,7 @@ class OrderV(APIView):
         temp = []
         # Prepare all products in one go to avoid N+1 queries in the loop
         product_ids = [prod['id'] for prod in data['products']]
-        products_map = {p.id: p for p in Product.objects.filter(id__in=product_ids).select_related('provider')}
+        products_map = {p.id: p for p in Product.objects.filter(id__in=product_ids).exclude(provider__name=ACCOUNTING_PROVIDER_NAME).select_related('provider')}
         
         for prod in data['products']:
             p = products_map.get(prod['id'])
@@ -717,7 +731,7 @@ class ModOrder(APIView):
             if od.product_id == -1:
                 pass
             else:
-                product = Product.objects.filter(id=od.product_id)
+                product = Product.objects.filter(id=od.product_id).exclude(provider__name=ACCOUNTING_PROVIDER_NAME)
                 if len(product) == 0:
                     print('product not found')
                 else:
@@ -790,7 +804,7 @@ class ModOrder(APIView):
                     'msg' : "Order Ancien"
                 }
             else:
-                p = Product.objects.filter(id=od.product_id)
+                p = Product.objects.filter(id=od.product_id).exclude(provider__name=ACCOUNTING_PROVIDER_NAME)
                 if len(p) == 0:
                     f  =  Provider.objects.filter(id = od.provider_id)
                     if len(f) == 0:
@@ -799,7 +813,7 @@ class ModOrder(APIView):
                     'msg' : "Fournisseur Introuvable"
                 }
                     else:
-                        p  = Product.objects.filter(provider = f[0],name=od.product_name)
+                        p  = Product.objects.filter(provider = f[0],name=od.product_name).exclude(provider__name=ACCOUNTING_PROVIDER_NAME)
                         if len(p) == 0:
                             resp = {
                     'error':True,
@@ -854,7 +868,7 @@ class AddDetails(APIView):
                 order.save()
 
 
-                product = Product.objects.filter(id=od.product_id)
+                product = Product.objects.filter(id=od.product_id).exclude(provider__name=ACCOUNTING_PROVIDER_NAME)
                 if len(product) == 0:
                     print('product not found')
                 else:
@@ -1051,7 +1065,7 @@ class GetStable(APIView):
         resp['ventes']['quantity'] = sales_agg['quantity'] or 0
 
         # Optimize Current Purchases (last 7 days)
-        purchases_agg = Product.objects.filter(date__gte=start_stable, date__lte=now).aggregate(
+        purchases_agg = Product.objects.exclude(provider__name=ACCOUNTING_PROVIDER_NAME).filter(date__gte=start_stable, date__lte=now).aggregate(
             total=Sum(F('price_achat') * F('quantity')),
             quantity=Sum('quantity')
         )
@@ -1059,7 +1073,7 @@ class GetStable(APIView):
         resp['achat']['quantity'] = purchases_agg['quantity'] or 0
         
         # Optimize Total Stock
-        stock_agg = Product.objects.aggregate(
+        stock_agg = Product.objects.exclude(provider__name=ACCOUNTING_PROVIDER_NAME).aggregate(
             total=Sum(F('price_achat') * F('quantity')),
             quantity=Sum('quantity')
         )
